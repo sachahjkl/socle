@@ -8,6 +8,7 @@ package socletool
 // toolbox.write_logo writes assets/logo*.png, socle.ico and .project/image.png from logo_draw.
 
 import "core:math"
+import "core:slice"
 import paint "gt:paint"
 import toolbox "gt:toolbox"
 
@@ -59,8 +60,16 @@ FLAKE_TURN   :: -45.0
 FLAKE_FILL   :: 0.78
 // The mark's size in the square: room stays around it, as around the suite's other marks.
 MARK_SCALE   :: 0.9
-FLAKE_LIGHT_COLOUR :: 0x7EBAE4
-FLAKE_DARK_COLOUR  :: 0x5277C3
+// The flake stands in relief on the platform. The light lambdas rise higher than the dark ones: two heights give the
+// flake depth, as the slabs' steps give it to the plinth. The visible walls take the light as the slabs' sides do:
+// the walls that face left are lit, the ones that face right are in shade.
+Lambda_Look :: struct {
+	top, lit, shade: u32,
+	height:          f32,   // in units
+}
+
+FLAKE_LIGHT_LOOK :: Lambda_Look{top = 0x7EBAE4, lit = 0x5E9CD2, shade = 0x4A80B8, height = 26}
+FLAKE_DARK_LOOK  :: Lambda_Look{top = 0x5277C3, lit = 0x415E9A, shade = 0x31487A, height = 12}
 
 @(private = "file")
 face :: proc(c: ^paint.Canvas, points: [][2]f32, colour: u32) {
@@ -71,9 +80,9 @@ face :: proc(c: ^paint.Canvas, points: [][2]f32, colour: u32) {
 }
 
 // One lambda turned by `degrees` around the flake's centre, moved to the plane of a top face (its centre at `at`, the
-// flake `radius` units wide), then projected as the faces are.
+// flake `radius` units wide), then projected as the faces are: its outline at the foot of its relief.
 @(private = "file")
-lambda :: proc(c: ^paint.Canvas, degrees: f32, at: [2]f32, radius: f32, colour: u32) {
+lambda_outline :: proc(degrees: f32, at: [2]f32, radius: f32) -> [][2]f32 {
 	turn := math.to_radians(degrees + FLAKE_TURN)
 	k := radius / FLAKE_RADIUS
 	diagonal := math.to_radians(f32(45))
@@ -90,7 +99,31 @@ lambda :: proc(c: ^paint.Canvas, degrees: f32, at: [2]f32, radius: f32, colour: 
 		p += step
 		append(&points, project(p, turn, k, diagonal, at))
 	}
-	face(c, points[:], colour)
+	return points[:]
+}
+
+// A lambda raised from its foot: the walls that face the viewer, then its top, its height higher on the screen.
+@(private = "file")
+raised :: proc(c: ^paint.Canvas, foot: [][2]f32, look: Lambda_Look) {
+	// (the outline's turn, from the shoelace sum: it says on which side of each edge the outside is; the projection
+	// keeps it)
+	area: f32
+	for a, i in foot {
+		b := foot[(i + 1) % len(foot)]
+		area += a.x * b.y - b.x * a.y
+	}
+	up := [2]f32{0, -look.height}
+	for a, i in foot {
+		b := foot[(i + 1) % len(foot)]
+		d := b - a
+		outward := area > 0 ? [2]f32{d.y, -d.x} : [2]f32{-d.y, d.x}
+		// (a wall whose outside points up the screen is behind its lambda: the top covers it)
+		if outward.y <= 0 { continue }
+		face(c, {a, b, b + up, a + up}, outward.x < 0 ? look.lit : look.shade)
+	}
+	top := make([][2]f32, len(foot), context.temp_allocator)
+	for p, i in foot { top[i] = p + up }
+	face(c, top, look.top)
 }
 
 logo_draw :: proc(pixels, _: int) -> paint.Canvas {
@@ -114,8 +147,26 @@ logo_draw :: proc(pixels, _: int) -> paint.Canvas {
 	// (the top face is a square of half side half/sqrt(2) before the projection: its inscribed circle holds the flake)
 	top := slabs[len(slabs) - 1]
 	radius := FLAKE_FILL * top.half / math.SQRT_TWO
-	for d in FLAKE_LIGHT { lambda(&c, d, top.centre, radius, FLAKE_LIGHT_COLOUR) }
-	for d in FLAKE_DARK { lambda(&c, d, top.centre, radius, FLAKE_DARK_COLOUR) }
+	Placed :: struct {
+		foot:    [][2]f32,
+		look:  Lambda_Look,
+		front: f32,   // the lowest point on the screen: the nearest to the viewer
+	}
+	lambdas := make([dynamic]Placed, context.temp_allocator)
+	for d in FLAKE_LIGHT { append(&lambdas, Placed{foot = lambda_outline(d, top.centre, radius), look = FLAKE_LIGHT_LOOK}) }
+	for d in FLAKE_DARK { append(&lambdas, Placed{foot = lambda_outline(d, top.centre, radius), look = FLAKE_DARK_LOOK}) }
+	for &l in lambdas {
+		l.front = min(f32)
+		for p in l.foot { l.front = max(l.front, p.y) }
+	}
+	// (the low lambdas first, then the high ones, each group from the back to the front. The lambdas touch without
+	// overlapping on the platform, so a high one's walls cover its low neighbours, and a low one never rises in front
+	// of a high one's top)
+	slice.sort_by(lambdas[:], proc(a, b: Placed) -> bool {
+		if a.look.height != b.look.height { return a.look.height < b.look.height }
+		return a.front < b.front
+	})
+	for l in lambdas { raised(&c, l.foot, l.look) }
 	return c
 }
 
