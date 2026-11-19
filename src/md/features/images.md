@@ -24,12 +24,16 @@ The base is the feature `socle.base`, on in every template of socle. A person ca
   cleaning is the same as socle's "Free space", with the same limits.
 - **nix-output-monitor**: the terminal shows a build as a tree of what downloads and what builds. `socle apply` in a
   terminal pipes its build's log through it.
+- **bootvine** ([codeberg.org/wvhulle/bootvine](https://codeberg.org/wvhulle/bootvine)) in place of Plymouth: the
+  start and the shutdown show a live tree of systemd's jobs, from the initrd to the desktop, and bootvine asks the
+  disk's passphrase itself. A start that fails says which unit and why, where a splash screen hides it.
 - Automatic store optimisation, a weekly clean of old versions beyond the last ten, the documentation caches off.
 
 ## Why opinions
 
 A person who chose socle chose not to decide these things. The base removes the choices that every new NixOS user
-makes alone and often gets wrong: flakes off, a store that grows without end, no readable build output. Each part
+makes alone and often gets wrong: flakes off, a store that grows without end, no readable build output, a start that
+hides its errors behind a splash. Each part
 stays a setting, so an expert can turn it off.
 
 ## The terminal
