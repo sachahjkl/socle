@@ -68,8 +68,9 @@ Lambda_Look :: struct {
 	height:          f32,   // in units
 }
 
-FLAKE_LIGHT_LOOK :: Lambda_Look{top = 0x7EBAE4, lit = 0x5E9CD2, shade = 0x4A80B8, height = 26}
-FLAKE_DARK_LOOK  :: Lambda_Look{top = 0x5277C3, lit = 0x415E9A, shade = 0x31487A, height = 12}
+// (a small step: a large one breaks the flake into separate blocks, and it no longer reads as the snowflake)
+FLAKE_LIGHT_LOOK :: Lambda_Look{top = 0x7EBAE4, lit = 0x5E9CD2, shade = 0x4A80B8, height = 14}
+FLAKE_DARK_LOOK  :: Lambda_Look{top = 0x5277C3, lit = 0x415E9A, shade = 0x31487A, height = 9}
 
 @(private = "file")
 face :: proc(c: ^paint.Canvas, points: [][2]f32, colour: u32) {
