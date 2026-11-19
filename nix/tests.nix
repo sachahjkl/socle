@@ -53,7 +53,8 @@
     go = input: [input.outPath] ++ lib.concatMap go (builtins.attrValues (input.inputs or {}));
   in
     lib.unique (lib.concatMap go [self inputs.nixpkgs]);
-  flake = builtins.toFile "flake.nix" ''
+  # (a derivation, not builtins.toFile: with lazy trees, the sources it names are virtual until a derivation needs them)
+  flake = pkgs.writeText "flake.nix" ''
     {
       inputs = {
         nixpkgs.url = "path:${inputs.nixpkgs}";
