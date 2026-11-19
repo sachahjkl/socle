@@ -32,6 +32,11 @@
     <video controls preload="metadata" playsinline poster="img/film.jpg" src="socle.mp4"></video>
   </figure>
 
+  <figure class="shot wide">
+    <a class="frame" href="img/overview.png"><img src="img/overview.png" alt="The overview: the running version, its updates, its pages, the recent changes" loading="lazy"></a>
+    <figcaption>The overview: what runs, what waits, what changed.</figcaption>
+  </figure>
+
   <section id="features" class="grid">
     <article class="card">
       <h3>Start from a ready-made system</h3>
@@ -75,8 +80,9 @@
     </article>
   </section>
 
+  <!-- whats-new -->
+
   <section class="gallery">
-    <figure class="shot"><a class="frame" href="img/overview.png"><img src="img/overview.png" alt="The overview: the running version, its updates, its pages" loading="lazy"></a><figcaption>The overview</figcaption></figure>
     <figure class="shot"><a class="frame" href="img/apps.png"><img src="img/apps.png" alt="The apps: OBS Studio added, VLC of the template removed" loading="lazy"></a><figcaption>Apps, added and removed</figcaption></figure>
     <figure class="shot"><a class="frame" href="img/desktop.png"><img src="img/desktop.png" alt="The desktop page: Plasma chosen over the template's GNOME, a session that opens by itself" loading="lazy"></a><figcaption>A page of settings</figcaption></figure>
     <figure class="shot"><a class="frame" href="img/review.png"><img src="img/review.png" alt="The review of four changes, a session that restarts" loading="lazy"></a><figcaption>The review</figcaption></figure>
@@ -84,6 +90,28 @@
     <figure class="shot"><a class="frame" href="img/history.png"><img src="img/history.png" alt="The history of the versions, each one with its changes" loading="lazy"></a><figcaption>Every version</figcaption></figure>
     <figure class="shot"><a class="frame" href="img/templates.png"><img src="img/templates.png" alt="The gallery of templates" loading="lazy"></a><figcaption>Templates</figcaption></figure>
     <figure class="shot"><a class="frame" href="img/all-settings.png"><img src="img/all-settings.png" alt="Every option, its value and who sets it" loading="lazy"></a><figcaption>All settings</figcaption></figure>
+  </section>
+
+  <section id="download" class="download">
+    <h2>Try it</h2>
+    <div class="cols">
+      <div class="well">
+        <h3>The window, today</h3>
+        <p>It runs on a demo system and drives no Nix yet: every page, the review, the try and the keep work on the
+          demo's data.</p>
+        <code>git clone --recurse-submodules https://github.com/sachahjkl/socle</code>
+      </div>
+      <div class="well">
+        <h3>Build it</h3>
+        <p>The flake's shell has Odin, Rust and the libraries; the tool builds the window.</p>
+        <code>nix develop -c ./build.sh &amp;&amp; build/socle</code>
+      </div>
+      <div class="well">
+        <h3>What comes next</h3>
+        <p>The managed configuration, the apply on a real system, then the installer: <a href="https://github.com/sachahjkl/socle/blob/master/ROADMAP.md">the roadmap</a>.</p>
+        <code>MIT</code>
+      </div>
+    </div>
   </section>
 </main>
 
