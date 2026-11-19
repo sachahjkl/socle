@@ -1,8 +1,8 @@
 # The installer
 
-socle installs a machine from a live image that socle's flake builds (`nixosConfigurations.installer`, an ISO with a
-desktop and socle in installer mode). The installer writes the same folder as any socle system: the installed machine
-has socle from its first start.
+socle installs a machine from one of socle's live images ([images.md](images.md)), or from any NixOS live image where
+`nix run github:sachahjkl/socle -- install` starts it. The installer writes the same folder as any socle system: the
+installed machine has socle and socle's base from its first start.
 
 ## The steps
 

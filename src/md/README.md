@@ -1,7 +1,9 @@
 # socle: intent
 
-socle is a control panel for a whole NixOS system. It owns one configuration: it creates it from a template, changes
-it from forms, builds it, switches to it, and goes back to an earlier generation. This folder follows
+socle is a control panel for a whole NixOS system, or for a person's Nix setup on any other system
+([data/targets.md](data/targets.md)). It owns one configuration: it creates it from a template, changes it from forms,
+builds it, switches to it, and goes back to an earlier generation. It is also the installer of socle's own live images,
+a NixOS with opinions ([features/images.md](features/images.md)). This folder follows
 <https://srcmd.org>. It records why the design has its shape. The screens are in [docs/mockups](../../docs/mockups/README.md).
 
 ## The idea that makes the problem small
@@ -79,6 +81,8 @@ These tests come before any window, because each one can break the design:
 
 - [data/configuration.md](data/configuration.md): the folder that socle manages, the layers, their JSON form, the
   priorities, the generated flake, the eject
+- [data/targets.md](data/targets.md): the system target (NixOS) and the home target (Nix anywhere), what the stakes
+  change, what socle does at start
 - [data/templates.md](data/templates.md): what a template is, how one extends another, how a template is followed,
   shared and published
 - [features/features.md](features/features.md): a feature is a NixOS module with options under `socle.*`; how its
@@ -93,5 +97,7 @@ These tests come before any window, because each one can break the design:
   concepts
 - [features/installer.md](features/installer.md): the install from the live image, the disk, the hardware, the first
   start
+- [features/images.md](features/images.md): socle's live images, the base of every system (Determinate Nix, nh,
+  nix-output-monitor), the command line
 - [infrastructure/helper.md](infrastructure/helper.md): the root service, its verbs, its checks, polkit, the switch
   that outlives the window

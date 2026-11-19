@@ -13,8 +13,10 @@ server), then runs it: apps, users, desktop, hardware, services and updates, eac
 change is reviewed before it applies, and every earlier state stays one click away. Make a template of your own
 system, extend someone else's, and share it.
 
-Under the hood, socle owns a NixOS configuration. It writes data, never Nix code, so the configuration stays a plain
-flake: you can read it, keep it in git, and build it without socle.
+Under the hood, socle owns a NixOS configuration, or a Home Manager configuration on any other system with Nix. It
+writes data, never Nix code, so the configuration stays a plain flake: you can read it, keep it in git, and build it
+without socle. socle's live images boot into its installer and install a NixOS with sane defaults: Determinate Nix,
+nh, nix-output-monitor.
 
 ![The overview](docs/mockups/overview.png)
 

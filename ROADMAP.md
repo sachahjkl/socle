@@ -21,15 +21,19 @@
 - **Templates.** Start from a ready-made system, follow its updates, replace any of its choices.
   [Templates](src/md/data/templates.md).
 - **Updates.** Move Nixpkgs, socle's library and the templates forward, with the same review as any change.
+- **The base.** Determinate Nix, nh and nix-output-monitor in every system that socle installs, each one a setting.
+  [Images and base](src/md/features/images.md).
+- **A home on any system.** A person's apps, shell and settings through Home Manager, on any Linux with Nix or on
+  macOS; socle installs Nix if it is missing. [Targets](src/md/data/targets.md).
 
 ## Later
 
-- **The installer.** From the live image: the disk, the first person, the template, the install, the first start.
-  [The installer](src/md/features/installer.md).
+- **The installer and socle's images.** Live images that boot into socle's installer: the disk, the first person,
+  the template, the install, the first start. [The installer](src/md/features/installer.md),
+  [images](src/md/features/images.md).
 - **Your own template.** Turn the current system into a template, extend another one, export it as a git repository
   that anyone can start from. [Templates](src/md/data/templates.md).
 - **Several machines.** One configuration for several hosts, and a deployment to another machine over SSH.
-- **A person's own settings.** Each account's apps, shell and look, through Home Manager, on a page per person.
 
 ## Maybe
 
