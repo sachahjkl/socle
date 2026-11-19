@@ -1,5 +1,5 @@
-# The switch, tested for real in a virtual machine (src/md/README.md, "The first tests": the revert). Opt-in: it boots a
-# NixOS and takes minutes. nix build .#tests.switch
+# The switch and the install, tested for real in virtual machines (src/md/README.md, "The first tests"). Opt-in: each
+# boots a NixOS and takes minutes. nix build .#tests.switch, nix build .#tests.install
 #
 # The machine is socle's test folder (tests/vm) without a desktop, managed by socle: /etc/socle is written at its
 # start. In it, a person's change (the hello package) is built with nix from /etc/socle; `socle helper try` runs it;
@@ -71,6 +71,29 @@
   '';
   systemJSON = builtins.toFile "system.json" (builtins.toJSON (layer common));
   changedJSON = builtins.toFile "system.json" (builtins.toJSON (layer changedValues));
+
+  # The install: the folder of tests/install (a person's choices, as the installer writes them) installed by the
+  # helper on an empty disk, then that disk started. Built on the host first, as the switch's system is.
+  installRoot = ../tests/install;
+  installed =
+    (socleLib.configuration {
+      inputs = inputs // {socle = self;};
+      root = installRoot;
+    })
+    .nixosConfigurations
+    .socle-test;
+  # (both machines are one: the installer writes the disk that the target starts from, as nixos/tests/installer.nix)
+  installDisk = {
+    virtualisation = {
+      diskImage = "./target.qcow2";
+      # (the boot partition takes 1 GiB, the system the rest)
+      diskSize = 12 * 1024;
+      useEFIBoot = true;
+      # (an evaluation of NixOS, and the copy of socle's source into the store, at once)
+      memorySize = 6144;
+      cores = 4;
+    };
+  };
 in {
   switch = pkgs.testers.runNixOSTest {
     name = "socle-switch";
@@ -142,6 +165,91 @@ in {
       helper("collect 1")
       machine.succeed("test \"$(nix-env --list-generations -p /nix/var/nix/profiles/system | wc -l)\" = 1")
       machine.succeed(f"test -e {path}")
+    '';
+  };
+
+  install = pkgs.testers.runNixOSTest {
+    name = "socle-install";
+    # (the installation profile sets Nixpkgs' options, which a read-only Nixpkgs refuses)
+    node.pkgsReadOnly = false;
+    nodes = {
+      installer = {modulesPath, ...}: {
+        imports = [
+          installDisk
+          (modulesPath + "/profiles/installation-device.nix")
+          (modulesPath + "/../tests/common/auto-format-root-device.nix")
+        ];
+        # (the installer runs from a small second disk: the target's disk is /dev/vda while it installs and after)
+        virtualisation = {
+          emptyDiskImages = [2048];
+          rootDevice = "/dev/vdb";
+          # (made at the first start, by systemd's stage 1 or by the common module's script)
+          fileSystems."/".autoFormat = true;
+          additionalPaths =
+            sources
+            ++ [
+              installed.config.system.build.toplevel
+              installed.config.system.build.diskoScript
+            ];
+        };
+        environment.systemPackages = [self.packages.${pkgs.stdenv.hostPlatform.system}.socle pkgs.git];
+        nix.settings = {
+          experimental-features = ["nix-command" "flakes"];
+          substituters = lib.mkForce [];
+        };
+        hardware.enableAllFirmware = lib.mkForce false;
+      };
+      target = {
+        imports = [installDisk];
+        virtualisation = {
+          useBootLoader = true;
+          useDefaultFilesystems = false;
+          efi.keepVariables = false;
+          # (never used: the target starts from what the installer wrote)
+          fileSystems."/" = {
+            device = "/dev/disk/by-label/this-is-not-real";
+            fsType = "ext4";
+          };
+        };
+      };
+    };
+    testScript = ''
+      installer.start()
+      installer.wait_for_unit("multi-user.target")
+      installer.succeed(
+          "mkdir -p /tmp/folder && cp -r --no-preserve=mode ${installRoot}/. /tmp/folder/",
+          "cp --no-preserve=mode ${flake} /tmp/folder/flake.nix",
+          # (Nix 2.34 writes socle's "submodules" into the lock of a path: input, then refuses to read it: the folder's
+          # lock without it. A real folder names socle by git+https, which takes it)
+          "nix flake lock path:/tmp/folder && sed -i '/\"submodules\": true,/d' /tmp/folder/flake.lock",
+      )
+
+      # (nix's messages kept, its progress left out)
+      rc, out = installer.execute("socle helper install /tmp/folder 2>&1 | grep -v '^@nix {\"action\":\"\\(start\\|stop\\|result\\)\"' ; exit ''${PIPESTATUS[0]}")
+      print(out)
+      assert rc == 0, "socle helper install failed"
+      for step in ["Check", "Disk", "Folder", "Hardware", "Build", "Install", "Done"]:
+          assert f"@socle {step}" in out, f"the install did not say {step}"
+
+      installer.succeed(
+          "git -C /mnt/etc/socle log --format=%s | grep -qx 'Install from socle#minimal'",
+          "test -z \"$(git -C /mnt/etc/socle status --porcelain)\"",
+      )
+      installer.succeed("umount -R /mnt", "sync")
+      installer.shutdown()
+
+      # the installed disk, started by its own boot loader
+      target.state_dir = installer.state_dir
+      target.start()
+      target.wait_for_unit("multi-user.target")
+      target.succeed(
+          "test -e /boot/loader/loader.conf",
+          "test \"$(readlink -f /run/current-system)\" = ${installed.config.system.build.toplevel}",
+          "test \"$(findmnt -no FSTYPE /)\" = btrfs",
+          "id -nG ada | grep -qw wheel",
+          "test \"$(stat -c %G /etc/socle)\" = wheel",
+          "git -C /etc/socle log --format=%s | grep -qx 'Install from socle#minimal'",
+      )
     '';
   };
 }

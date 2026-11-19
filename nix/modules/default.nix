@@ -7,6 +7,8 @@
   imports = [
     inputs.determinate.nixosModules.default
     inputs.bootvine.nixosModules.default
+    inputs.disko.nixosModules.disko
+    ./disk.nix
     ./ui.nix
     ./pages.nix
     ./base.nix

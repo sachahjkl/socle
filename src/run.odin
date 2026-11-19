@@ -56,6 +56,49 @@ run :: proc(command: []string, dir := "", allocator := context.allocator) -> (r:
 	return
 }
 
+// Runs `command` with `input` on its standard input (a password: never on its command line, which any process can
+// read), and waits; its output in the temporary memory.
+run_input :: proc(command: []string, input: string) -> (r: Ran) {
+	in_r, in_w, ierr := os.pipe()
+	if ierr != nil { return }
+	out_r, out_w, oerr := os.pipe()
+	if oerr != nil { os.close(in_r); os.close(in_w); return }
+	sync.mutex_lock(&start_lock)
+	p, e := os.process_start({command = command, env = child_env(), stdin = in_r, stdout = out_w})
+	sync.mutex_unlock(&start_lock)
+	os.close(in_r)
+	os.close(out_w)
+	if e != nil { os.close(in_w); os.close(out_r); return }
+	_, _ = os.write_string(in_w, input)
+	os.close(in_w)
+	out, _ := os.read_entire_file_from_file(out_r, context.temp_allocator)
+	os.close(out_r)
+	state, _ := os.process_wait(p)
+	r.stdout = string(out)
+	r.code = state.exit_code
+	r.ok = state.exited && state.exit_code == 0
+	return
+}
+
+// Runs `command` on this terminal (it asks its own questions there), and waits; its standard output in the temporary
+// memory.
+run_terminal :: proc(command: []string) -> (r: Ran) {
+	out_r, out_w, oerr := os.pipe()
+	if oerr != nil { return }
+	sync.mutex_lock(&start_lock)
+	p, e := os.process_start({command = command, env = child_env(), stdin = os.stdin, stdout = out_w, stderr = os.stderr})
+	sync.mutex_unlock(&start_lock)
+	os.close(out_w)
+	if e != nil { os.close(out_r); return }
+	out, _ := os.read_entire_file_from_file(out_r, context.temp_allocator)
+	os.close(out_r)
+	state, _ := os.process_wait(p)
+	r.stdout = string(out)
+	r.code = state.exit_code
+	r.ok = state.exited && state.exit_code == 0
+	return
+}
+
 // Runs `command` and gives each line of its standard error to `line` as it comes (a build's log), then waits.
 // Its standard output (a path, a result) comes back whole.
 run_lines :: proc(command: []string, dir: string, line: proc(user: rawptr, text: string), user: rawptr, allocator := context.allocator) -> (r: Ran) {

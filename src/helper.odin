@@ -11,6 +11,7 @@ package socle
 //   socle helper boot <store path>    the default for the next start; nothing runs now
 //   socle helper init <template>      /etc/socle written from a template: socle takes this machine over
 //   socle helper collect <keep>       the versions beyond the last <keep> removed, the store's garbage collected
+//   socle helper install <folder>     the folder's disk erased, its system installed on it (helper_install.odin)
 
 import "core:encoding/json"
 import "core:fmt"
@@ -25,7 +26,8 @@ KEEP_SECONDS :: 60
 @(private = "file") STATE_FILE :: "/run/socle/state.json"
 @(private = "file") LOCK_FILE  :: "/run/socle/lock"
 @(private = "file") SYSTEM_PROFILE :: "/nix/var/nix/profiles/system"
-@(private = "file") SW :: "/run/current-system/sw/bin/"
+// (the system's programs by their full path: under pkexec, PATH is not to be trusted)
+SW :: "/run/current-system/sw/bin/"
 @(private = "file") REVERT_UNIT :: "socle-revert"
 
 // Runs a verb; the exit code of the process.
@@ -41,11 +43,11 @@ helper_main :: proc(args: []string) -> int {
 	case "boot":    return len(args) == 2 ? helper_boot(args[1]) : helper_fail("socle helper boot <store path>")
 	case "init":    return len(args) >= 2 ? helper_init(args[1], len(args) > 2 ? args[2] : "") : helper_fail("socle helper init <template>")
 	case "collect": return len(args) == 2 ? helper_collect(args[1]) : helper_fail("socle helper collect <count>")
+	case "install": return len(args) == 2 ? helper_install(args[1]) : helper_fail("socle helper install <folder>")
 	}
 	return helper_fail(fmt.tprintf("socle helper: no verb %s", args[0]))
 }
 
-@(private = "file")
 helper_fail :: proc(why: string) -> int {
 	fmt.eprintln(why)
 	return 1
@@ -179,7 +181,7 @@ helper_collect :: proc(count: string) -> int {
 FLAKE_TEXT :: `{
   description = "This machine's system, managed by socle: socle/*.json are its settings, custom/*.nix its code.";
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2605";
+    nixpkgs.url = "%s";
     socle = {
       url = "%s";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -192,7 +194,8 @@ FLAKE_TEXT :: `{
 }
 `
 
-SOCLE_URL :: "git+https://github.com/sachahjkl/socle?submodules=1"
+SOCLE_URL   :: "git+https://github.com/sachahjkl/socle?submodules=1"
+NIXPKGS_URL :: "https://flakehub.com/f/NixOS/nixpkgs/0.2605"
 
 // /etc/socle from a template: the flake, the system's layer, this machine's layer (its name, its people, its
 // release), its hardware (nixos-generate-config), a git history. Refused when the folder holds a configuration.
@@ -206,12 +209,10 @@ helper_init :: proc(template, source: string) -> int {
 	for d in ([]string{join(folder, "socle", "hosts"), hw, join(folder, "custom")}) {
 		if os.make_directory_all(d) != nil { return helper_fail(fmt.tprintf("%s cannot be made", d)) }
 	}
-	_ = os.write_entire_file(join(folder, "flake.nix"), fmt.tprintf(FLAKE_TEXT, source != "" ? source : SOCLE_URL))
+	_ = os.write_entire_file(join(folder, "flake.nix"), fmt.tprintf(FLAKE_TEXT, NIXPKGS_URL, source != "" ? source : SOCLE_URL))
 	_ = os.write_entire_file(join(folder, "socle", "system.json"), fmt.tprintf("{{\n  \"socle\": 1,\n  \"template\": %q,\n  \"values\": {{\n    \"socle\": {{\"people\": {{%s}}}}\n  }}\n}}\n", template, people_json()))
-	release := strings.trim_space(read_text("/run/current-system/nixos-version", context.temp_allocator))
-	if len(release) >= 5 { release = release[:5] }
 	_ = os.write_entire_file(join(folder, "socle", "hosts", fmt.tprintf("%s.json", host)),
-		fmt.tprintf("{{\n  \"socle\": 1,\n  \"values\": {{\n    \"system\": {{\"stateVersion\": %q}}\n  }}\n}}\n", release != "" ? release : "26.05"))
+		fmt.tprintf("{{\n  \"socle\": 1,\n  \"values\": {{\n    \"system\": {{\"stateVersion\": %q}}\n  }}\n}}\n", release_now()))
 	hardware := run({SW + "nixos-generate-config", "--show-hardware-config"}, allocator = context.temp_allocator)
 	if !hardware.ok { return helper_fail(fmt.tprintf("the hardware cannot be read: %s", hardware.stderr)) }
 	_ = os.write_entire_file(join(hw, "hardware.nix"), hardware.stdout)

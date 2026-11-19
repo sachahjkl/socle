@@ -204,6 +204,8 @@ params :: proc(h: ^host.Host, p: ^ui.Build_Params) {
 main :: proc() {
 	args := os.args[1:]
 	if len(args) > 0 && args[0] == "helper" { os.exit(helper_main(args[1:])) }
+	// (with flags, the terminal's install; without, the installer's window)
+	if len(args) > 1 && args[0] == "install" { os.exit(install_cli(args[1:])) }
 	if len(args) > 0 && (args[0] == "version" || args[0] == "--version") {
 		fmt.println(APP_NAME, APP_VERSION)
 		return

@@ -1,0 +1,18 @@
+{
+  "socle": 1,
+  "template": "socle#minimal",
+  "values": {
+    "socle": {
+      "base": {
+        "bootvine": false,
+        "determinate": false
+      },
+      "people": {
+        "ada": {
+          "admin": true,
+          "description": "Ada"
+        }
+      }
+    }
+  }
+}

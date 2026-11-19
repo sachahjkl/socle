@@ -5,7 +5,6 @@ package socle
 // In the demo, preparing is a clock and the helper is this window: the stages, their order and their words are the
 // real ones.
 
-import "core:encoding/json"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -216,12 +215,8 @@ Build :: struct {
 	app:          ^App,
 	folder, host: string,
 	path, why:    string,
-	// the log's state, the worker's own
-	kinds:        map[u64]int,   // an activity's id -> its type
-	bytes:        map[u64]i64,   // a download's bytes done
-	progress:     Progress,
+	log:          Nix_Log,   // the worker's own
 	posted_ms:    f64,
-	errors:       strings.Builder,
 }
 
 @(private = "file")
@@ -230,85 +225,33 @@ build_work :: proc(data: rawptr) {
 	// (a flake in git sees only the files git knows: socle adds its own, and the person's code: README.md, "Subtleties")
 	add := run({"git", "-C", b.folder, "add", "-A", "--", "socle", "custom", "flake.lock"})
 	delete(add.stdout); delete(add.stderr)
-	b.kinds = make(map[u64]int)
-	b.bytes = make(map[u64]i64)
-	b.errors = strings.builder_make()
+	nix_log_init(&b.log)
 	target := fmt.tprintf("%s#nixosConfigurations.%s.config.system.build.toplevel", b.folder, b.host)
 	r := run_lines({"nix", "build", "--no-link", "--print-out-paths", "--no-warn-dirty", "--log-format", "internal-json", "-v", target}, "", build_line, b)
 	if r.ok {
 		b.path = strings.clone(strings.trim_space(r.stdout))
 	} else {
-		msg := strings.trim_space(strings.to_string(b.errors))
+		msg := nix_log_errors(&b.log)
 		b.why = strings.clone(msg != "" ? msg : "nix build failed")
 	}
 	delete(r.stdout); delete(r.stderr)
-	delete(b.kinds); delete(b.bytes)
-	strings.builder_destroy(&b.errors)
+	nix_log_destroy(&b.log)
 }
 
-// One line of nix's log: activities start and stop, report their progress, and errors are messages of level 0.
 @(private = "file")
 build_line :: proc(user: rawptr, text: string) {
 	b := (^Build)(user)
-	if !strings.has_prefix(text, "@nix ") { return }
-	v, err := json.parse_string(text[5:], parse_integers = true, allocator = context.temp_allocator)
-	if err != nil { return }
-	o, _ := v.(json.Object)
-	id := u64(num(o["id"]))
-	switch str(o["action"]) {
-	case "start":
-		kind := int(num(o["type"]))
-		b.kinds[id] = kind
-		words := str(o["text"])
-		if (kind == ACT_BUILD || kind == ACT_COPY_PATH) && words != "" {
-			delete(b.progress.doing)
-			b.progress.doing = strings.clone(words)
-		}
-	case "stop":
-		delete_key(&b.kinds, id)
-	case "result":
-		fields := arr(o["fields"])
-		switch int(num(o["type"])) {
-		case RES_PROGRESS:
-			if len(fields) < 2 { break }
-			done, expected := int(num(fields[0])), int(num(fields[1]))
-			switch b.kinds[id] {
-			case ACT_BUILDS:     b.progress.builds_done, b.progress.builds_expected = done, expected
-			case ACT_COPY_PATHS: b.progress.paths_done, b.progress.paths_expected = done, expected
-			case ACT_COPY_PATH, ACT_FILE_TRANSFER:
-				b.bytes[id] = i64(done)
-				total: i64
-				for _, n in b.bytes { total += n }
-				b.progress.bytes_done = total
-			}
-		case RES_SET_EXPECTED:
-			if len(fields) >= 2 && int(num(fields[0])) == ACT_COPY_PATH { b.progress.bytes_expected = i64(num(fields[1])) }
-		}
-	case "msg":
-		if int(num(o["level"])) == 0 {
-			strings.write_string(&b.errors, strip_colours(str(o["msg"])))
-			strings.write_byte(&b.errors, '\n')
-		}
-	}
+	if !nix_log_line(&b.log, text) { return }
 	// (at most ten times a second: the window shows it, it need not see each line)
 	now := f64(time.tick_now()._nsec) / 1e6
 	if now - b.posted_ms > 100 {
 		b.posted_ms = now
 		p := new(Progress)
-		p^ = b.progress
-		p.doing = strings.clone(b.progress.doing)
+		p^ = b.log.progress
+		p.doing = strings.clone(b.log.progress.doing)
 		if !ui.post(&b.app.main.state, progress_post, p) { delete(p.doing); free(p) }
 	}
 }
-
-// nix's activity and result types (src/libutil/logging.hh)
-@(private = "file") ACT_COPY_PATH     :: 100 + 1
-@(private = "file") ACT_FILE_TRANSFER :: 100 + 2
-@(private = "file") ACT_COPY_PATHS    :: 100 + 4
-@(private = "file") ACT_BUILDS        :: 100 + 5
-@(private = "file") ACT_BUILD         :: 100 + 6
-@(private = "file") RES_PROGRESS      :: 100 + 5
-@(private = "file") RES_SET_EXPECTED  :: 100 + 6
 
 @(private = "file")
 progress_post :: proc(data: rawptr, _: u64) {
@@ -323,21 +266,6 @@ progress_post :: proc(data: rawptr, _: u64) {
 	free(p)
 }
 
-// The escapes of a terminal's colours, which nix puts in its messages.
-strip_colours :: proc(s: string) -> string {
-	b := strings.builder_make(context.temp_allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] == 0x1b && i + 1 < len(s) && s[i + 1] == '[' {
-			j := i + 2
-			for j < len(s) && !(s[j] >= '@' && s[j] <= '~') { j += 1 }
-			i = j
-			continue
-		}
-		strings.write_byte(&b, s[i])
-	}
-	return strings.to_string(b)
-}
-
 @(private = "file")
 build_done :: proc(data: rawptr, _: u64) {
 	b := (^Build)(data)
@@ -345,7 +273,7 @@ build_done :: proc(data: rawptr, _: u64) {
 	if app.apply.stage == .Preparing {
 		if b.why != "" { apply_failed(app, b.why) } else { apply_built(app, b.path) }
 	}
-	delete(b.path); delete(b.why); delete(b.progress.doing)
+	delete(b.path); delete(b.why)
 	free(b)
 }
 

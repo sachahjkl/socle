@@ -1,0 +1,34 @@
+{
+  "socle": 1,
+  "values": {
+    "console": {
+      "useXkbConfig": true
+    },
+    "i18n": {
+      "defaultLocale": "fr_FR.UTF-8"
+    },
+    "services": {
+      "xserver": {
+        "xkb": {
+          "layout": "fr"
+        }
+      }
+    },
+    "socle": {
+      "disk": {
+        "device": "/dev/vda"
+      },
+      "people": {
+        "ada": {
+          "hashedPassword": "$y$j9T$Wu3003o05dV3UWB8Thm4K1$wpgv4qqakmfXmQiLFqoqf8vZljJ.qzNGeVI2mJDJvG1"
+        }
+      }
+    },
+    "system": {
+      "stateVersion": "26.05"
+    },
+    "time": {
+      "timeZone": "Europe/Paris"
+    }
+  }
+}
