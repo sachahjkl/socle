@@ -20,7 +20,33 @@ Popular :: struct {
 }
 
 Gallery_Entry :: struct {
-	ref, title, description, parent: string,
+	ref, title, description, parent, target: string,
+}
+
+// Every template of socle's, of both targets (src/demo/gallery.json, written by `socletool demo` from the flake): the
+// installer and the start of a home list them before any folder evaluates.
+GALLERY :: #load("demo/gallery.json", string)
+
+// socle's templates of `target`, in its title's order; their strings in `allocator` (gallery_destroy frees them).
+templates_of :: proc(target: Target, allocator := context.allocator) -> [dynamic]Gallery_Entry {
+	out := make([dynamic]Gallery_Entry, allocator)
+	v, err := json.parse_string(GALLERY, allocator = context.temp_allocator)
+	if err != nil { return out }
+	want := target == .Home ? "home" : "system"
+	for g in arr(v) {
+		if str(at(g, {"target"})) != want { continue }
+		append(&out, Gallery_Entry{
+			ref = strings.clone(str(at(g, {"ref"})), allocator), title = strings.clone(str(at(g, {"title"})), allocator),
+			description = strings.clone(str(at(g, {"description"})), allocator), parent = strings.clone(str(at(g, {"parent"})), allocator),
+			target = strings.clone(want, allocator),
+		})
+	}
+	return out
+}
+
+gallery_destroy :: proc(g: ^[dynamic]Gallery_Entry) {
+	for e in g { delete(e.ref); delete(e.title); delete(e.description); delete(e.parent); delete(e.target) }
+	delete(g^)
 }
 
 Page_Def :: struct {
@@ -102,7 +128,7 @@ info_parse :: proc(text: string) -> (info: ^Info, why: string) {
 	}
 	for g in arr(root["gallery"]) {
 		o, _ := g.(json.Object)
-		append(&info.gallery, Gallery_Entry{ref = str(o["ref"]), title = str(o["title"]), description = str(o["description"]), parent = str(o["parent"])})
+		append(&info.gallery, Gallery_Entry{ref = str(o["ref"]), title = str(o["title"]), description = str(o["description"]), parent = str(o["parent"]), target = str(o["target"])})
 	}
 	for t in arr(root["templates"]) {
 		o, _ := t.(json.Object)

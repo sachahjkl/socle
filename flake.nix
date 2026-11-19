@@ -14,6 +14,11 @@
       url = "git+https://codeberg.org/wvhulle/bootvine";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # a home on any system (src/md/data/targets.md): Home Manager on its own, NixOS or not
+    home-manager = {
+      url = "https://flakehub.com/f/nix-community/home-manager/0.2605";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # the installer's disk (src/md/features/installer.md): a machine layer's disk becomes disko's configuration
     disko = {
       url = "https://flakehub.com/f/nix-community/disko/1";
@@ -172,6 +177,10 @@
     nixosModules = {
       socle = import ./nix/modules {inherit self inputs;};
       default = self.nixosModules.socle;
+    };
+    homeModules = {
+      socle = import ./nix/home {inherit self;};
+      default = self.homeModules.socle;
     };
     socleTemplates = import ./nix/templates;
 

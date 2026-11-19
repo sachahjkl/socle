@@ -155,10 +155,54 @@
 
     systems = lib.genAttrs hosts nixosFor;
 
+    # A home (targets.md): one per socle/homes/<name>.json, through Home Manager on its own, NixOS or not. The same
+    # layers as a system's, at the same priorities: its own layer holds what belongs to this person on this machine
+    # (home.username, home.homeDirectory, home.stateVersion).
+    homesDir = root + "/socle/homes";
+    homeNames =
+      if pathExists homesDir
+      then map (lib.removeSuffix ".json") (builtins.filter (lib.hasSuffix ".json") (attrNames (readDir homesDir)))
+      else [];
+    homeModulesFor = name: let
+      homeFile = homesDir + "/${name}.json";
+      revision = hashString "sha256" ((
+          if system != null
+          then builtins.toJSON system
+          else readText systemFile
+        )
+        + readText homeFile);
+    in
+      [
+        socle.homeModules.socle
+        {
+          socle = {
+            inherit revision;
+            host = name;
+            template = systemLayer.template or "";
+          };
+        }
+      ]
+      ++ lib.concatMap (t: t.modules or []) templates
+      ++ lib.imap0 (i: t: layerModule t.layer (priority.templateLeaf + (count - 1 - i)) (valuesOf (readJSON t.layer))) templates
+      ++ [
+        (layerModule systemFile priority.system (valuesOf systemLayer))
+        (layerModule homeFile priority.host (valuesOf (readJSON homeFile)))
+      ]
+      ++ custom;
+    homes = lib.genAttrs homeNames (name:
+      socle.inputs.home-manager.lib.homeManagerConfiguration {
+        pkgs = inputs.nixpkgs.legacyPackages.${(readJSON (homesDir + "/${name}.json")).platform or "x86_64-linux"};
+        modules = homeModulesFor name;
+      });
+
+    # (a system and a home answer the window the same way: by their name in the folder)
+    configs = systems // homes;
+
     # What the window reads of a host in one evaluation (features.md): socle's settings as they result, the
     # templates' values alone, the defaults, the pages, the popular apps with their versions, the gallery.
     infoFor = name: let
-      c = systems.${name};
+      c = configs.${name};
+      isHome = homes ? ${name};
       inherit (c) config pkgs;
       templateValues = lib.foldl lib.recursiveUpdate {} (map (t: valuesOf (readJSON t.layer)) templates);
       defaults = lib.mapAttrsRecursiveCond (x: !lib.isOption x) (_: o: o.default or null) (removeAttrs c.options.socle ["ui" "revision" "host" "template" "package"]);
@@ -202,14 +246,18 @@
         };
       paths = lib.unique (lib.concatMap (p: p.options) (builtins.attrValues config.socle.ui.pages));
     in {
+      target =
+        if isHome
+        then "home"
+        else "system";
       effective = removeAttrs config.socle ["ui" "package"];
       template = templateValues;
       inherit defaults;
       templates = map (t: {inherit (t) ref title;}) templates;
       pages = config.socle.ui.pages;
       facts = lib.filterAttrs (_: f: f != null) (lib.genAttrs paths fact);
-      # (the running system's facts the overview shows)
-      nixos = config.system.nixos.release;
+      # (the running system's facts the overview shows: a home's is Home Manager's release)
+      nixos = config.system.nixos.release or config.home.version.release;
       # (the locked Nixpkgs, which the Apps page searches: nix search on this path)
       nixpkgs = inputs.nixpkgs.outPath;
       inputs = lib.mapAttrs (_: i: {lastModified = i.lastModified or 0;}) (removeAttrs inputs ["self"]);
@@ -222,24 +270,33 @@
           unfree = !(p.meta.license.free or true);
         })
       (import ./popular.nix);
+      # (the templates of this configuration's target)
       gallery =
         lib.mapAttrsToList (n: t: {
           ref = "socle#${n}";
-          inherit (t) title description;
+          inherit (t) title description target;
           parent = t.parent or null;
         })
-        socle.socleTemplates;
+        (lib.filterAttrs (_: t:
+          t.target
+          == (
+            if isHome
+            then "home"
+            else "system"
+          ))
+        socle.socleTemplates);
     };
   in {
     nixosConfigurations = systems;
-    socleInfo = lib.genAttrs hosts infoFor;
+    homeConfigurations = homes;
+    socleInfo = lib.genAttrs (hosts ++ homeNames) infoFor;
     # (a NixOS test's machine is made of the same modules: nix/tests.nix)
     socleModules = lib.genAttrs hosts modulesFor;
-    # every option of a machine, as All settings searches them: built apart from the system's manual, which the base
-    # leaves out
-    socleOptions = lib.genAttrs hosts (name:
-      (systems.${name}.pkgs.nixosOptionsDoc {
-        inherit (systems.${name}) options;
+    # every option of a machine or a home, as All settings searches them: built apart from the system's manual, which
+    # the base leaves out
+    socleOptions = lib.genAttrs (hosts ++ homeNames) (name:
+      (configs.${name}.pkgs.nixosOptionsDoc {
+        inherit (configs.${name}) options;
         warningsAreErrors = false;
       })
       .optionsJSON);

@@ -83,6 +83,18 @@
     })
     .nixosConfigurations
     .socle-test;
+  # A home (tests/home), built and activated by its person on a NixOS that socle does not manage: Home Manager on its
+  # own, as on any Linux. Built on the host first.
+  homeRoot = ../tests/home;
+  homeExpected =
+    (socleLib.configuration {
+      inputs = inputs // {socle = self;};
+      root = homeRoot;
+    })
+    .homeConfigurations
+    .ada
+    .activationPackage;
+
   # The Desktop image, with the test driver's link, started from its ISO on UEFI as a computer starts it
   # (nixos/tests/boot.nix)
   imageISO = (images.desktopWith [({modulesPath, ...}: {imports = [(modulesPath + "/testing/test-instrumentation.nix")];})]).config.system.build.isoImage;
@@ -185,6 +197,39 @@ in {
       helper("collect 1")
       machine.succeed("test \"$(nix-env --list-generations -p /nix/var/nix/profiles/system | wc -l)\" = 1")
       machine.succeed(f"test -e {path}")
+    '';
+  };
+
+  home = pkgs.testers.runNixOSTest {
+    name = "socle-home";
+    nodes.machine = {
+      users.users.ada.isNormalUser = true;
+      environment.systemPackages = [pkgs.git];
+      nix.settings = {
+        experimental-features = ["nix-command" "flakes"];
+        substituters = lib.mkForce [];
+      };
+      virtualisation = {
+        memorySize = 4096;
+        additionalPaths = sources ++ [homeExpected];
+      };
+    };
+    testScript = ''
+      machine.wait_for_unit("multi-user.target")
+      def ada(command):
+          return machine.succeed(f"su - ada -c '{command}'")
+
+      ada("mkdir -p ~/.config/socle && cp -r --no-preserve=mode ${homeRoot}/. ~/.config/socle/")
+      ada("cp --no-preserve=mode ${flake} ~/.config/socle/flake.nix && cd ~/.config/socle && git init -q && git add -A")
+      # the person's home, built from the folder as the window builds it
+      path = ada("nix build --no-link --print-out-paths ~/.config/socle#homeConfigurations.\\\"ada\\\".activationPackage").strip()
+      assert path == "${homeExpected}", f"the folder built {path}, not the host's ${homeExpected}"
+      # its activation, as the window runs it: the person's app, socle, a version in Home Manager's profile
+      ada(f"{path}/activate")
+      ada("hello")
+      ada("command -v socle")
+      ada("test -e ~/.local/state/nix/profiles/home-manager || test -e /nix/var/nix/profiles/per-user/ada/home-manager")
+      ada("test \"$(readlink -f ~/.local/state/nix/profiles/home-manager || readlink -f /nix/var/nix/profiles/per-user/ada/home-manager)\" = " + path)
     '';
   };
 

@@ -28,6 +28,17 @@ PROFILES    :: "/nix/var/nix/profiles"
 
 Source :: enum { Demo, Folder }
 
+// What socle manages (src/md/data/targets.md): a whole NixOS machine, or one person's home through Home Manager.
+Target :: enum { System, Home }
+
+// Where a target keeps its own layer, beside socle/system.json.
+target_dir :: proc(t: Target) -> string { return t == .Home ? "homes" : "hosts" }
+
+// A home's folder: the person's own.
+home_folder :: proc() -> string {
+	return strings.clone(join(os.get_env("HOME", context.temp_allocator), ".config", "socle"))
+}
+
 Load_State :: enum {
 	Loading,   // the first read is under way
 	Ready,
@@ -54,6 +65,9 @@ Loaded :: struct {
 	app:            ^App,
 	state:          Load_State,
 	why:            string,
+	folder:         string,   // the folder read: the one named, else the default of what socle runs on
+	target:         Target,
+	pick:           bool,     // no folder named: the target comes from what socle runs on
 	host:           string,
 	info:           ^Info,
 	draft, committed: string,
@@ -66,22 +80,32 @@ Loaded :: struct {
 load_start :: proc(app: ^App) {
 	if app.source == .Demo { demo_load(app); return }
 	app.loading = true
-	ui.task(&app.main.state, load_work, load_done, new_clone(Loaded{app = app, host = strings.clone(app.host)}), load_lost)
+	l := Loaded{app = app, host = strings.clone(app.host), folder = strings.clone(app.folder), target = app.target, pick = !app.folder_named}
+	ui.task(&app.main.state, load_work, load_done, new_clone(l), load_lost)
 }
 
 @(private = "file")
 load_work :: proc(data: rawptr) {
 	l := (^Loaded)(data)
-	folder := l.app.folder
+	// (no folder named: a NixOS is managed whole, any other system has a home: targets.md, "The start")
+	if l.pick && l.target == .System && !os.exists("/etc/NIXOS") {
+		l.target = .Home
+		delete(l.folder)
+		l.folder = home_folder()
+	}
+	folder := l.folder
 	if !os.exists(join(folder, "flake.nix")) || !os.exists(join(folder, "socle")) {
 		l.state = .Absent
 		return
 	}
-	if l.host == "" { l.host = pick_host(folder) }
-	if l.host == "" { l.state, l.why = .Failed, strings.clone("socle/hosts holds no machine"); return }
+	// (a folder holds one target: its layers say which)
+	if os.exists(join(folder, "socle", "homes")) && !os.exists(join(folder, "socle", "hosts")) { l.target = .Home }
+	if os.exists(join(folder, "socle", "hosts")) { l.target = .System }
+	if l.host == "" { l.host = pick_host(folder, l.target) }
+	if l.host == "" { l.state, l.why = .Failed, fmt.aprintf("socle/%s holds nothing", target_dir(l.target)); return }
 	l.draft = read_text(join(folder, "socle", "system.json"))
 	l.committed = git_show(folder, "HEAD:socle/system.json")
-	l.machine = read_text(join(folder, "socle", "hosts", fmt.tprintf("%s.json", l.host)))
+	l.machine = read_text(join(folder, "socle", target_dir(l.target), fmt.tprintf("%s.json", l.host)))
 	l.lock_now = lock_dates(read_text(join(folder, "flake.lock")))
 	l.lock_committed = lock_dates(git_show(folder, "HEAD:flake.lock"))
 	text, why := evaluate(folder, l.host)
@@ -91,7 +115,7 @@ load_work :: proc(data: rawptr) {
 		info, perr := info_parse(text)
 		if info == nil { l.state, l.why = .Failed, strings.clone(perr) } else { l.info, l.state = info, .Ready }
 	}
-	l.generations = generations_read(folder, l.host)
+	l.generations = generations_read(folder, l.host, l.target)
 }
 
 @(private = "file")
@@ -100,6 +124,14 @@ load_done :: proc(data: rawptr, _: u64) {
 	app := l.app
 	app.loading = false
 	app.load, app.load_error = l.state, l.why
+	app.target = l.target
+	delete(app.folder)
+	app.folder = l.folder
+	// (the start page's templates, of the target found: read once, here, not in a frame)
+	if l.state == .Absent {
+		gallery_destroy(&app.setup_templates)
+		app.setup_templates = templates_of(app.target)
+	}
 	if l.host != "" { delete(app.host); app.host = l.host }
 	if l.info != nil {
 		info_destroy(app.info)
@@ -128,17 +160,27 @@ load_done :: proc(data: rawptr, _: u64) {
 @(private = "file")
 load_lost :: proc(data: rawptr) { free(data) }
 
-// The host of this machine when the folder has it, else the first.
+// This machine's name in the folder when the folder has it, else the first: a host by its name, a home as
+// <person>@<host> (Home Manager's own way), else as <person>.
 @(private = "file")
-pick_host :: proc(folder: string) -> string {
-	entries, err := os.read_all_directory_by_path(join(folder, "socle", "hosts"), context.temp_allocator)
+pick_host :: proc(folder: string, target: Target) -> string {
+	entries, err := os.read_all_directory_by_path(join(folder, "socle", target_dir(target)), context.temp_allocator)
 	if err != nil { return "" }
 	names := make([dynamic]string, context.temp_allocator)
 	for e in entries { if strings.has_suffix(e.name, ".json") { append(&names, strings.trim_suffix(e.name, ".json")) } }
 	slice.sort(names[:])
-	me := strings.trim_space(read_text("/etc/hostname", context.temp_allocator))
-	for n in names { if n == me { return strings.clone(n) } }
+	host := machine_hostname()
+	user := os.get_env("USER", context.temp_allocator)
+	wanted := target == .Home ? []string{fmt.tprintf("%s@%s", user, host), user} : []string{host}
+	for w in wanted { for n in names { if n == w { return strings.clone(n) } } }
 	return len(names) > 0 ? strings.clone(names[0]) : ""
+}
+
+// This machine's host name (/etc/hostname, else the kernel's).
+machine_hostname :: proc() -> string {
+	name := strings.trim_space(read_text("/etc/hostname", context.temp_allocator))
+	if name == "" { name = strings.trim_space(read_text("/proc/sys/kernel/hostname", context.temp_allocator)) }
+	return name
 }
 
 read_text :: proc(path: string, allocator := context.allocator) -> string {
@@ -155,7 +197,8 @@ git_show :: proc(folder, what: string) -> string {
 
 // The flake's evaluation for the window (lib.nix, socleInfo): its JSON, or why it failed (nix's own words).
 evaluate :: proc(folder, host: string) -> (text: string, why: string) {
-	r := run({"nix", "eval", "--json", "--no-warn-dirty", fmt.tprintf("%s#socleInfo.%s", folder, host)})
+	// (the name quoted: a home's holds an @)
+	r := run({"nix", "eval", "--json", "--no-warn-dirty", fmt.tprintf("%s#socleInfo.\"%s\"", folder, host)})
 	if !r.ok {
 		delete(r.stdout)
 		return "", nix_error(r.stderr)
@@ -201,17 +244,20 @@ date_words :: proc(t: i64) -> string {
 
 // The generations of the system profile, newest first, each joined to its commit (the layers' hash of each commit of
 // the folder, until every generation is named).
-generations_read :: proc(folder, host: string) -> [dynamic]Generation {
+generations_read :: proc(folder, host: string, target: Target) -> [dynamic]Generation {
 	out := make([dynamic]Generation)
-	entries, err := os.read_all_directory_by_path(PROFILES, context.temp_allocator)
+	profiles, name := profile_of(target)
+	entries, err := os.read_all_directory_by_path(profiles, context.temp_allocator)
 	if err != nil { return out }
-	running := link_target("/run/current-system")
-	default_ := link_target(join(PROFILES, "system"))
+	// (a home has no start of its own: the version that runs is its profile's)
+	default_ := link_target(join(profiles, name))
+	running := target == .Home ? default_ : link_target("/run/current-system")
+	prefix := fmt.tprintf("%s-", name)
 	for e in entries {
-		if !strings.has_prefix(e.name, "system-") || !strings.has_suffix(e.name, "-link") { continue }
-		n, ok := strconv.parse_int(e.name[len("system-"):len(e.name) - len("-link")])
+		if !strings.has_prefix(e.name, prefix) || !strings.has_suffix(e.name, "-link") { continue }
+		n, ok := strconv.parse_int(e.name[len(prefix):len(e.name) - len("-link")])
 		if !ok { continue }
-		link := join(PROFILES, e.name)
+		link := join(profiles, e.name)
 		path := link_target(link)
 		info, _ := os.lstat(link, context.temp_allocator)
 		g := Generation{number = n, path = strings.clone(path), date = info.modification_time}
@@ -232,7 +278,7 @@ generations_read :: proc(folder, host: string) -> [dynamic]Generation {
 		parts := strings.split(line, "\x1f", context.temp_allocator)
 		if len(parts) != 2 { continue }
 		system := git_show(folder, fmt.tprintf("%s:socle/system.json", parts[0]))
-		host_text := git_show(folder, fmt.tprintf("%s:socle/hosts/%s.json", parts[0], host))
+		host_text := git_show(folder, fmt.tprintf("%s:socle/%s/%s.json", parts[0], target_dir(target), host))
 		h := layers_hash(system, host_text)
 		delete(system); delete(host_text)
 		for &g in out {
@@ -243,6 +289,19 @@ generations_read :: proc(folder, host: string) -> [dynamic]Generation {
 		}
 	}
 	return out
+}
+
+// Where a target's versions are: the folder of its profile and the profile's name. A home's is Home Manager's, in the
+// person's state folder, or in /nix/var/nix/profiles/per-user when Nix keeps it there.
+profile_of :: proc(target: Target) -> (folder, name: string) {
+	if target == .System { return PROFILES, "system" }
+	state := os.get_env("XDG_STATE_HOME", context.temp_allocator)
+	if state == "" { state = join(os.get_env("HOME", context.temp_allocator), ".local", "state") }
+	folder = join(state, "nix", "profiles")
+	if !os.exists(join(folder, "home-manager")) {
+		folder = join(PROFILES, "per-user", os.get_env("USER", context.temp_allocator))
+	}
+	return folder, "home-manager"
 }
 
 generations_destroy :: proc(gs: ^[dynamic]Generation) {

@@ -81,7 +81,8 @@ index_work :: proc(data: rawptr) {
 			append(&b.entries, Entry{key = attr, name = str(at_(p, "pname")), version = str(at_(p, "version")), description = str(at_(p, "description"))})
 		}
 	case .Options:
-		target := fmt.tprintf("%s#socleOptions.%s", b.from, b.host)
+		// (the name quoted: a home's holds an @)
+		target := fmt.tprintf("%s#socleOptions.\"%s\"", b.from, b.host)
 		r := run({"nix", "build", "--no-link", "--print-out-paths", "--no-warn-dirty", target}, allocator = a)
 		if !r.ok { b.why = nix_error(strings.clone(r.stderr)); return }
 		path := join(strings.trim_space(r.stdout), "share", "doc", "nixos", "options.json")

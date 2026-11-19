@@ -24,7 +24,7 @@ a_folder_evaluates_and_reads :: proc(t: ^testing.T) {
 	testing.expect(t, str(at(info.effective, {"desktop", "environment"})) != "", "socle's values are there")
 	locks := lock_dates(read_text(join(folder, "flake.lock"), context.temp_allocator))
 	testing.expect(t, locks["nixpkgs"] > 0, "the lock gives Nixpkgs's date")
-	gens := generations_read(folder, host)
+	gens := generations_read(folder, host, .System)
 	defer generations_destroy(&gens)
 	running := 0
 	for g in gens { if g.running { running += 1 } }

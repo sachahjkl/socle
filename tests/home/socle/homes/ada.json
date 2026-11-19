@@ -1,0 +1,10 @@
+{
+  "socle": 1,
+  "values": {
+    "home": {
+      "homeDirectory": "/home/ada",
+      "stateVersion": "26.05",
+      "username": "ada"
+    }
+  }
+}

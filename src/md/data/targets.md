@@ -30,11 +30,33 @@ A NixOS machine has both: the system target, and a home target for each person w
 
 ## The start
 
-At start, socle reads what it runs on, on a worker:
+At start, socle reads what it runs on, on a worker (source.odin, `load_work`):
 
-1. `/etc/NIXOS` exists: socle offers the system target, and a home for the person.
-2. Nix exists without NixOS: socle offers a home.
-3. No Nix: socle offers to install Nix (the Determinate Nix installer, through polkit), then a home.
+1. No folder named and `/etc/NIXOS` exists: the system target, `/etc/socle`. `socle --home` opens the person's home on
+   NixOS too.
+2. No folder named, no NixOS: a home, `~/.config/socle`. Without one, the start page offers the home templates and
+   writes the folder as the person (home.odin).
+3. A folder named (`--folder`): its layers say its target (`socle/hosts` or `socle/homes`).
+4. No Nix: socle's program comes through Nix today, so it does not run there yet. Installing Nix for the person waits
+   for a program that runs without it (ROADMAP.md).
+
+## As built
+
+- The modules: `nix/shared` holds what both targets declare (the pages, the identity, the apps' options);
+  `nix/modules` is the system's, `nix/home` the home's. A home's apps go to `home.packages`; its pages are Home
+  Manager's own options (Shell, Development) and its base's tools.
+- A home's own layer is `socle/homes/<person>@<host>.json`, Home Manager's way of naming a home: `home.username`,
+  `home.homeDirectory`, `home.stateVersion`. The window evaluates `socleInfo."<person>@<host>"`, quoted for its `@`.
+- The apply of a home builds `homeConfigurations."<name>".activationPackage`, then runs its `activate` as the person:
+  no helper, no countdown, no "at the next start". Its versions are Home Manager's profile, in
+  `~/.local/state/nix/profiles` (or `/nix/var/nix/profiles/per-user/<person>`); each holds `socle-revision`, as a
+  system's does, so the history joins them to the folder's commits the same way.
+- Free space of a home runs as the person (`nix-env --delete-generations`, `nix-collect-garbage`).
+- A template says its target (`nix/templates/default.nix`); the gallery of a configuration lists its target's only.
+  `src/demo/gallery.json` holds every template for the installer and the start of a home, which have no folder to
+  evaluate yet.
+- Tests: `checks.homes` builds tests/home and reads what it holds; `nix build .#tests.home` builds and activates it as
+  its person in a virtual machine.
 
 ## Refused
 

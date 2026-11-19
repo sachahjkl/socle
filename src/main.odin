@@ -1,6 +1,7 @@
 // socle: your whole system in one window. src/md/README.md says how it is built.
 //   socle                     the window on this machine's configuration (/etc/socle)
 //   socle --folder=<path>     the window on another folder that socle manages
+//   socle --home              the window on this person's home (~/.config/socle), on NixOS too
 //   socle --demo              the window on the demo system (tests/demo): the pictures and the film
 //   socle --page=apps         a page first (overview, apps, desktop, people, history, templates, updates, settings, ...)
 //   socle --headless          no window of the system (a picture, a film)
@@ -38,7 +39,9 @@ App :: struct {
 
 	// where the system comes from (source.odin)
 	source:      Source,
+	target:      Target,   // what the folder manages: a system or a home (the worker finds it)
 	folder:      string,
+	folder_named: bool,    // --folder or --home: the folder is not the default of what socle runs on
 	host:        string,
 	load:        Load_State,
 	load_error:  string,
@@ -68,6 +71,7 @@ App :: struct {
 	new_person:  ui.Line_Edit,   // People: a login to add
 	setup_ref:   int,            // Setup: the template chosen
 	setup_sure:  bool,
+	setup_templates: [dynamic]Gallery_Entry,   // Setup: socle's templates of the target, read when the folder is absent
 
 	// the installer's window, in place of the system's (installer.odin): nil unless `socle install`
 	installer:     ^Installer,
@@ -114,6 +118,10 @@ open :: proc(o: Open_Options) -> ^App {
 			delete(app.folder)
 			abs, err := filepath.abs(a[len("--folder="):], context.allocator)
 			app.folder = err == nil ? abs : strings.clone(a[len("--folder="):])
+			app.folder_named = true
+		case a == "--home":
+			delete(app.folder)
+			app.folder, app.target, app.folder_named = home_folder(), .Home, true
 		case strings.has_prefix(a, "--page="): page = a[len("--page="):]
 		case strings.has_prefix(a, "--size="):
 			v := a[len("--size="):]
@@ -181,6 +189,7 @@ close :: proc(app: ^App) {
 	layer_destroy(&app.draft)
 	layer_destroy(&app.committed)
 	layer_destroy(&app.machine)
+	gallery_destroy(&app.setup_templates)
 	info_destroy(app.info)
 	ui.line_edit_destroy(&app.search)
 	ui.line_edit_destroy(&app.options_search)

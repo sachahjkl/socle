@@ -38,17 +38,42 @@
     (expect "ada logs in by itself" (c.services.displayManager.autoLogin.user == "ada"))
     (expect "the revision is the layers' hash" (builtins.stringLength c.socle.revision == 64))
   ];
-  # every template, as a system: it evaluates to a system's derivation without the socle program (the eject)
-  templates = lib.mapAttrsToList (name: _: let
-    t = sample {
+  # a home (tests/home): its template's tools, the person's own app, one the person removed, the layers' hash
+  homeOf = system:
+    (socleLib.configuration ({
+        inherit inputs;
+        root = ../tests/home;
+      }
+      // lib.optionalAttrs (system != null) {inherit system;}))
+    .homeConfigurations
+    .ada;
+  home = (homeOf null).activationPackage;
+  # every template, of its target: it evaluates to a derivation (a system's without the socle program: the eject)
+  templates = lib.mapAttrsToList (name: t: let
+    layer = {
       socle = 1;
       template = "socle#${name}";
       values = {};
     };
   in
-    builtins.unsafeDiscardStringContext t.config.system.build.toplevel.drvPath)
+    builtins.unsafeDiscardStringContext (
+      if t.target == "home"
+      then (homeOf layer).activationPackage.drvPath
+      else (sample layer).config.system.build.toplevel.drvPath
+    ))
   inputs.self.socleTemplates;
 in {
   layers = pkgs.writeText "socle-layers" (lib.concatStringsSep "\n" layers);
   templates = pkgs.writeText "socle-templates" (lib.concatStringsSep "\n" templates);
+  homes = pkgs.runCommand "socle-homes" {} ''
+    p=${home}/home-path/bin
+    test -e $p/hello || { echo "the person's app is missing"; exit 1; }
+    test -e $p/rg || { echo "the template's ripgrep is missing"; exit 1; }
+    ! test -e $p/just || { echo "the template's just, removed by the person, stays"; exit 1; }
+    ! test -e $p/gh || { echo "GitHub's tool, turned off by the person, stays"; exit 1; }
+    test -e $p/socle || { echo "socle is not in the home"; exit 1; }
+    test "$(wc -c < ${home}/socle-revision)" = 64 || { echo "the revision is not the layers' hash"; exit 1; }
+    test -x ${home}/activate
+    touch $out
+  '';
 }

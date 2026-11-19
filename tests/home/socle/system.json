@@ -1,0 +1,15 @@
+{
+  "socle": 1,
+  "template": "socle#home-developer",
+  "values": {
+    "programs": {
+      "gh": {"enable": false}
+    },
+    "socle": {
+      "packages": {
+        "hello": true,
+        "just": false
+      }
+    }
+  }
+}

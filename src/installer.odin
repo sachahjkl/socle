@@ -83,7 +83,7 @@ Installer :: struct {
 	password2:   ui.Line_Edit,
 	show_pass:   bool,
 	// the system
-	gallery:     ^Info,   // the templates' gallery: the demo's evaluation holds it, made from the same templates
+	gallery:     [dynamic]Gallery_Entry,   // socle's templates of a whole system
 	template:    int,
 	// the install
 	step:        Install_Step,
@@ -100,8 +100,7 @@ installer_open :: proc(app: ^App) {
 	app.installer = ins
 	ins.disk = -1
 	ins.zone = -1
-	info, _ := info_parse(DEMO_INFO)
-	ins.gallery = info
+	ins.gallery = templates_of(.System)
 	if app.source == .Demo {
 		installer_demo_machine(ins)
 		return
@@ -121,7 +120,7 @@ installer_close :: proc(app: ^App) {
 	for f in ([]^ui.Line_Edit{&ins.wifi_key, &ins.passphrase, &ins.passphrase2, &ins.name, &ins.login, &ins.machine, &ins.password, &ins.password2}) {
 		ui.line_edit_destroy(f)
 	}
-	info_destroy(ins.gallery)
+	gallery_destroy(&ins.gallery)
 	delete(ins.net_error)
 	delete(ins.why)
 	delete(ins.progress.doing)
@@ -288,7 +287,7 @@ installer_plan :: proc(ins: ^Installer) -> Plan {
 		hash = "$", encrypt = ins.encrypt, passphrase = ui.line_edit_string(&ins.passphrase),
 	}
 	if ins.disk >= 0 && ins.disk < len(ins.disks) { p.disk = ins.disks[ins.disk].path }
-	if ins.template < len(ins.gallery.gallery) { p.template = ins.gallery.gallery[ins.template].ref }
+	if ins.template < len(ins.gallery) { p.template = ins.gallery[ins.template].ref }
 	if p.name == "" { p.name = p.login }
 	return p
 }
@@ -787,7 +786,7 @@ template_page :: proc(app: ^App, em: f32) {
 	page_head("System", "What the computer is for. Every setting can change later.", em)
 	ui.spacer(ui.px(em * 1.2))
 	if ui.list_card("###templates") {
-		for t, i in ins.gallery.gallery {
+		for t, i in ins.gallery {
 			if ui.card_row(fmt.tprintf("###template_row%d", i)) {
 				ui.radio(fmt.tprintf("###template_pick%d", i), "", &ins.template, i)
 				ui.spacer(ui.px(em * 0.4))
@@ -809,7 +808,7 @@ review_page :: proc(app: ^App, em: f32) {
 	ui.spacer(ui.px(em))
 	if ui.list_card("###review") {
 		rows := [][2]string{
-			{"System", ins.gallery.gallery[ins.template].title},
+			{"System", ins.gallery[ins.template].title},
 			{"Account", fmt.tprintf("%s (%s), administrator", p.name, p.login)},
 			{"Computer", p.host},
 			{"Language", LANGUAGES[ins.language].title},

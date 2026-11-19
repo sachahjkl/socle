@@ -109,8 +109,15 @@ folder_script :: proc(t: ^Take) -> string {
 	if t.app.catalogue.state == .Failed { return fmt.tprintf("the catalogue failed: %s", t.app.catalogue.why) }
 	film.hold(r, 1.5)
 	fmt.printfln("socle_film: the catalogue has %d packages; \"inkscape\" finds %d", len(t.app.catalogue.entries), len(t.app.catalogue.hits))
-	tap(t, "nav_Desktop", after = 0.6)
-	tap(t, "", "Plasma", after = 0.6)
+	fmt.printfln("socle_film: the folder is a %v, %s", t.app.target, t.app.host)
+	// (a setting changed, then discarded: the desktop of a system, a shell's toggle of a home, which has no desktop)
+	if t.app.target == .Home {
+		tap(t, "nav_shell", after = 0.6)
+		tap(t, "option_toggle1", after = 0.6)
+	} else {
+		tap(t, "nav_Desktop", after = 0.6)
+		tap(t, "", "Plasma", after = 0.6)
+	}
 	// (the film's clock, past the evaluator's delay: unrecorded frames do not move it)
 	film.hold(r, 1.5)
 	if !until(t, proc(app: ^socle.App) -> bool { return !app.evaluating && app.eval_due_ms == 0 }, 300) { return "the draft was not evaluated" }

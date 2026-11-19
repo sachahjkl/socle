@@ -48,7 +48,34 @@ apply_free_space :: proc(app: ^App) {
 		return
 	}
 	app.apply.stage = .Freeing
-	helper_start(app, {"collect", fmt.tprintf("%d", keep)})
+	if app.target == .System { helper_start(app, {"collect", fmt.tprintf("%d", keep)}); return }
+	// (a home's versions are the person's: no root)
+	Collect :: struct { app: ^App, keep: int, why, said: string }
+	ui.task(&app.main.state, proc(d: rawptr) {
+		c := (^Collect)(d)
+		folder, name := profile_of(.Home)
+		r := run({"nix-env", "--profile", join(folder, name), "--delete-generations", fmt.tprintf("+%d", c.keep)}, allocator = context.temp_allocator)
+		if !r.ok { c.why = strings.clone(strings.trim_space(r.stderr)); return }
+		g := run({"nix-collect-garbage"}, allocator = context.temp_allocator)
+		if !g.ok { c.why = strings.clone(strings.trim_space(g.stderr)); return }
+		for line in strings.split_lines(strings.concatenate({g.stdout, "\n", g.stderr}, context.temp_allocator), context.temp_allocator) {
+			if t := strings.trim_space(line); strings.has_suffix(t, " freed") { c.said = strings.clone(t) }
+		}
+	}, proc(d: rawptr, _: u64) {
+		c := (^Collect)(d)
+		collect_done(c.app, c.why, c.said)
+		delete(c.why); delete(c.said)
+		free(c)
+	}, new_clone(Collect{app = app, keep = keep}), proc(d: rawptr) { free(d) })
+}
+
+// Free space ended, by the helper or by the person's own nix.
+@(private = "file")
+collect_done :: proc(app: ^App, why, said: string) {
+	app.apply.stage = .Idle
+	if why != "" { ui.announce(&app.announcer, .Bad, "Space could not be freed", why, stays = true) }
+	else { ui.announce(&app.announcer, .Info, "Space freed", said != "" ? said : fmt.tprintf("The newest %d versions stay.", keep_versions(app))) }
+	load_start(app)
 }
 
 Apply :: struct {
@@ -91,7 +118,31 @@ apply_start :: proc(app: ^App) {
 	delete(app.apply.path)
 	app.apply = {stage = .Preparing, now = app.apply.now, started_ms = ui.now_ms(), summary = summary_of(app)}
 	if app.source == .Demo { return }
-	ui.task(&app.main.state, build_work, build_done, new_clone(Build{app = app, folder = app.folder, host = app.host}), build_lost)
+	ui.task(&app.main.state, build_work, build_done, new_clone(Build{app = app, folder = app.folder, host = app.host, target = app.target}), build_lost)
+}
+
+// A home's version made the running one: its own activation, as the person (targets.md: no root, no countdown; a
+// broken home takes neither the screen nor the network away, and the version before stays one click away).
+@(private = "file")
+Activation :: struct { app: ^App, path, why: string }
+
+@(private = "file")
+home_activate :: proc(app: ^App, path: string) {
+	app.apply.stage = .Finishing
+	if app.source == .Demo { apply_finished(app, false, ""); return }
+	ui.task(&app.main.state, proc(d: rawptr) {
+		a := (^Activation)(d)
+		r := run({join(a.path, "activate")}, allocator = context.temp_allocator)
+		if !r.ok {
+			msg := strings.trim_space(r.stderr != "" ? r.stderr : r.stdout)
+			a.why = strings.clone(msg != "" ? msg : "Home Manager's activation failed")
+		}
+	}, proc(d: rawptr, _: u64) {
+		a := (^Activation)(d)
+		apply_finished(a.app, false, a.why)
+		delete(a.path); delete(a.why)
+		free(a)
+	}, new_clone(Activation{app = app, path = strings.clone(path)}), proc(d: rawptr) { free(d) })
 }
 
 // A return to an earlier version: the same try and keep, nothing built.
@@ -101,6 +152,7 @@ apply_go_back :: proc(app: ^App, g: Generation) {
 	delete(app.apply.summary)
 	delete(app.apply.path)
 	app.apply = {stage = .Starting, now = 0, started_ms = ui.now_ms(), back = true, path = strings.clone(g.path), summary = fmt.aprintf("Back to version %d", g.number)}
+	if app.target == .Home { home_activate(app, g.path); return }
 	if app.source == .Demo { apply_try_started(app, ""); return }
 	helper_start(app, {"try", g.path})
 }
@@ -138,6 +190,7 @@ apply_built :: proc(app: ^App, path: string) {
 	delete(app.apply.path)
 	app.apply.path = strings.clone(path)
 	app.apply.stage, app.apply.started_ms = .Starting, ui.now_ms()
+	if app.target == .Home { home_activate(app, path); return }
 	if app.source == .Demo {
 		if app.apply.now == 1 { apply_finished(app, true, ""); return }
 		apply_try_started(app, "")
@@ -222,6 +275,7 @@ Build :: struct {
 	app:          ^App,
 	folder, host: string,
 	path, why:    string,
+	target:       Target,
 	log:          Nix_Log,   // the worker's own
 	posted_ms:    f64,
 }
@@ -233,7 +287,7 @@ build_work :: proc(data: rawptr) {
 	add := run({"git", "-C", b.folder, "add", "-A", "--", "socle", "custom", "flake.lock"})
 	delete(add.stdout); delete(add.stderr)
 	nix_log_init(&b.log)
-	target := fmt.tprintf("%s#nixosConfigurations.%s.config.system.build.toplevel", b.folder, b.host)
+	target := b.target == .Home ? fmt.tprintf("%s#homeConfigurations.\"%s\".activationPackage", b.folder, b.host) : fmt.tprintf("%s#nixosConfigurations.%s.config.system.build.toplevel", b.folder, b.host)
 	r := run_lines({"nix", "build", "--no-link", "--print-out-paths", "--no-warn-dirty", "--log-format", "internal-json", "-v", target}, "", build_line, b)
 	if r.ok {
 		b.path = strings.clone(strings.trim_space(r.stdout))
@@ -354,10 +408,7 @@ helper_done :: proc(data: rawptr, _: u64) {
 		if h.why != "" { ui.announce(&app.announcer, .Bad, "socle could not take over this machine", h.why, stays = true) }
 		load_start(app)
 	case "collect":
-		app.apply.stage = .Idle
-		if h.why != "" { ui.announce(&app.announcer, .Bad, "Space could not be freed", h.why, stays = true) }
-		else { ui.announce(&app.announcer, .Info, "Space freed", h.said != "" ? h.said : fmt.tprintf("The newest %d versions stay.", keep_versions(app))) }
-		load_start(app)
+		collect_done(app, h.why, h.said)
 	}
 	for a in h.args { delete(a) }
 	delete(h.args)
@@ -397,7 +448,7 @@ commit_done :: proc(data: rawptr, _: u64) {
 	app.apply.stage = .Idle
 	if c.why != "" { ui.announce(&app.announcer, .Warn, "The version runs, but the folder did not record it", c.why) }
 	else if app.apply.at_boot { ui.announce(&app.announcer, .Good, "The new version is ready", "It starts at the next start of the machine.") }
-	else { ui.announce(&app.announcer, .Good, "The new version is kept") }
+	else { ui.announce(&app.announcer, .Good, app.target == .Home ? "The new version runs" : "The new version is kept") }
 	delete(c.message); delete(c.why)
 	free(c)
 	load_start(app)
@@ -416,7 +467,7 @@ views_register_all :: proc(app: ^App) {
 }
 
 review_open :: proc(app: ^App) {
-	app.apply.now = changes_restart(app) ? 1 : 0
+	app.apply.now = app.target == .System && changes_restart(app) ? 1 : 0
 	ui.view_open(ui.state_views(&app.main.state), REVIEW_VIEW, app)
 }
 
@@ -443,10 +494,13 @@ review_view :: proc(v: ^ui.View, app: ^App) {
 			ui.spacer(ui.px(em * 0.8))
 			note_well("restart", lucide.ALERT_TRIANGLE, .Yellow, "The session restarts", "A new desktop closes the open apps. Save your work first, or apply at the next start.", em)
 		}
-		ui.spacer(ui.px(em * 0.8))
-		if ui.form_row("Apply") {
-			whens := [2]string{"Now, on trial", "At the next start"}
-			ui.segmented("###review_when", whens[:], &app.apply.now)
+		// (a home applies at once: no start of its own, no trial)
+		if app.target == .System {
+			ui.spacer(ui.px(em * 0.8))
+			if ui.form_row("Apply") {
+				whens := [2]string{"Now, on trial", "At the next start"}
+				ui.segmented("###review_when", whens[:], &app.apply.now)
+			}
 		}
 	}
 	if ui.dialog_buttons("review_buttons") {

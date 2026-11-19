@@ -1,0 +1,22 @@
+{
+  "socle": 1,
+  "values": {
+    "programs": {
+      "direnv": {"enable": true},
+      "fzf": {"enable": true},
+      "gh": {"enable": true},
+      "git": {"enable": true},
+      "starship": {"enable": true},
+      "zoxide": {"enable": true}
+    },
+    "socle": {
+      "packages": {
+        "bat": true,
+        "fd": true,
+        "jq": true,
+        "just": true,
+        "ripgrep": true
+      }
+    }
+  }
+}

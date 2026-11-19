@@ -100,13 +100,13 @@ letter_tile :: proc(id, name: string, em: f32) {
 // Before a system shows
 
 loading_page :: proc(app: ^App, em: f32) {
-	page_head("Reading the system", "", em)
+	page_head("Reading the configuration", "", em)
 	ui.spacer(ui.px(em * 1.2))
 	ui.button("###loading", fmt.tprintf("Evaluating %s", app.folder), o = {face = .Ghost, busy = true})
 }
 
 failed_page :: proc(app: ^App, em: f32) {
-	page_head("The system does not evaluate", app.folder, em)
+	page_head("The configuration does not evaluate", app.folder, em)
 	ui.spacer(ui.px(em * 1.2))
 	note_well("failed", lucide.ALERT_TRIANGLE, .Red, "nix says", app.load_error, em)
 	ui.spacer(ui.px(em))
@@ -119,15 +119,34 @@ failure_note :: proc(app: ^App, em: f32) {
 	ui.spacer(ui.px(em * 1.2))
 }
 
-// No configuration of socle's in the folder: take the machine over from a template (helper init).
+// No configuration of socle's in the folder: take the machine over from a template (helper init), or start a home.
 setup_page :: proc(app: ^App, em: f32) {
+	if len(app.setup_templates) == 0 { return }
+	titles := make([dynamic]string, context.temp_allocator)
+	for t in app.setup_templates { append(&titles, t.title) }
+	app.setup_ref = clamp(app.setup_ref, 0, len(titles) - 1)
+	chosen := app.setup_templates[app.setup_ref]
+	if app.target == .Home {
+		page_head("socle does not manage your home yet", "", em)
+		ui.spacer(ui.px(em))
+		weak(fmt.tprintf("Choose what to start from. socle then writes %s: your apps and settings, for this account on this computer. Nothing changes until you apply.", app.folder), "setup_intro")
+		section("Start from", em)
+		ui.segmented("###setup_template", titles[:], &app.setup_ref)
+		ui.spacer(ui.px(em * 0.5))
+		weak(chosen.description, "setup_about")
+		ui.spacer(ui.px(em))
+		if ui.button("setup_go", "Start my home", lucide.ARROW_RIGHT, {intent = .Primary, busy = app.loading}).clicked {
+			home_setup_start(app, chosen.ref)
+		}
+		return
+	}
 	page_head("socle does not manage this machine yet", "", em)
 	ui.spacer(ui.px(em))
 	weak(fmt.tprintf("Choose a system to start from. socle then writes %s: its settings, this machine's hardware and its people, in a folder of its own. Nothing changes until you apply.", app.folder), "setup_intro")
 	section("Start from", em)
-	refs := [?]string{"socle#family-desktop", "socle#gaming", "socle#developer", "socle#home-server", "socle#minimal"}
-	titles := [?]string{"Family desktop", "Gaming machine", "Developer workstation", "Home server", "Minimal"}
 	ui.segmented("###setup_template", titles[:], &app.setup_ref)
+	ui.spacer(ui.px(em * 0.5))
+	weak(chosen.description, "setup_about")
 	section("This machine", em)
 	note_well("setup_warn", lucide.ALERT_TRIANGLE, .Yellow, "socle takes over this machine's system",
 		"Once you apply, the system comes from socle's folder, and the configuration you have now no longer applies. Keep a copy of it.", em)
@@ -136,7 +155,7 @@ setup_page :: proc(app: ^App, em: f32) {
 	ui.toggle("###setup_sure", "I understand: socle manages this machine from now on", &app.setup_sure)
 	ui.spacer(ui.px(em * 0.8))
 	if ui.button("setup_go", "Take this machine over", lucide.ARROW_RIGHT, {intent = .Primary, disabled = !app.setup_sure}).clicked {
-		setup_start(app, refs[app.setup_ref])
+		setup_start(app, chosen.ref)
 	}
 }
 
@@ -156,7 +175,7 @@ overview_page :: proc(app: ^App, em: f32) {
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0})
 			running := running_generation(app)
-			line := app.info != nil ? fmt.tprintf("NixOS %s", app.info.release) : ""
+			line := app.info != nil ? fmt.tprintf("%s %s", app.target == .Home ? "Home Manager" : "NixOS", app.info.release) : ""
 			if running != nil { line = fmt.tprintf("Version %d, applied %s  ·  %s", running.number, when_words(running.date), line) }
 			ui.label(fmt.tprintf("%s###applied", line))
 		}
@@ -181,11 +200,16 @@ overview_page :: proc(app: ^App, em: f32) {
 		ui.spacer(ui.px(em * 0.75))
 		status_card("space", fmt.tprintf("%d versions kept", len(app.generations)), "Each one can run again from the history.", lucide.HISTORY, .Blue, "", em)
 	}
-	section("Your system", em)
 	tiles := make([dynamic][3]string, context.temp_allocator)   // page, title, text
-	append(&tiles, [3]string{"desktop", "Desktop", fmt.tprintf("%s, %s", desktop_title(text_at(app, "socle.desktop.environment")), bool_at(app, "socle.desktop.dark") ? "dark" : "light")})
-	append(&tiles, [3]string{"apps", "Apps", fmt.tprintf("%d for everyone", apps_count(app))})
-	append(&tiles, [3]string{"people", "People", people_words(app)})
+	if app.target == .Home {
+		section("Your home", em)
+		append(&tiles, [3]string{"apps", "Apps", fmt.tprintf("%d %s", apps_count(app), apps_count(app) == 1 ? "app" : "apps")})
+	} else {
+		section("Your system", em)
+		append(&tiles, [3]string{"desktop", "Desktop", fmt.tprintf("%s, %s", desktop_title(text_at(app, "socle.desktop.environment")), bool_at(app, "socle.desktop.dark") ? "dark" : "light")})
+		append(&tiles, [3]string{"apps", "Apps", fmt.tprintf("%d for everyone", apps_count(app))})
+		append(&tiles, [3]string{"people", "People", people_words(app)})
+	}
 	if app.info != nil {
 		for def in app.info.pages {
 			own := false
@@ -314,11 +338,16 @@ apps_page :: proc(app: ^App, em: f32) {
 	if ui.row(id = "###apps_head") {
 		ui.next({width = ui.fill(), height = ui.text_size(), font_size = math.round(em * 1.55), text_pad = 0})
 		ui.label("Apps###apps_title")
-		audiences := make([dynamic]string, context.temp_allocator)
-		append(&audiences, "For everyone")
-		for l in logins { append(&audiences, person_title(app, l)) }
-		if app.audience >= len(audiences) { app.audience = 0 }
-		ui.segmented("###audience", audiences[:], &app.audience)
+		// (a home's apps are its person's own: no one else to choose)
+		if app.target == .System {
+			audiences := make([dynamic]string, context.temp_allocator)
+			append(&audiences, "For everyone")
+			for l in logins { append(&audiences, person_title(app, l)) }
+			if app.audience >= len(audiences) { app.audience = 0 }
+			ui.segmented("###audience", audiences[:], &app.audience)
+		} else {
+			app.audience = 0
+		}
 	}
 	who := app.audience > 0 ? logins[app.audience - 1] : ""
 	ui.spacer(ui.px(em * 1.1))
@@ -646,7 +675,10 @@ updates_page :: proc(app: ^App, em: f32) {
 history_page :: proc(app: ^App, em: f32) {
 	page_head("History", "Each version stays until you free its space.", em)
 	ui.spacer(ui.px(em * 1.2))
-	if len(app.generations) == 0 { weak("This machine has no version of its system yet.", "history_none"); return }
+	if len(app.generations) == 0 {
+		weak(app.target == .Home ? "This home has no version yet: apply it once." : "This machine has no version of its system yet.", "history_none")
+		return
+	}
 	// (only when there is something to remove: the newest keep_versions always stay)
 	if keep := keep_versions(app); len(app.generations) > keep {
 		// (the changes bar says "Freeing space": the button only turns busy)
@@ -690,7 +722,7 @@ history_page :: proc(app: ^App, em: f32) {
 // Templates
 
 templates_page :: proc(app: ^App, em: f32) {
-	page_head("Templates", "The system you start from. Your own settings stay over it.", em)
+	page_head("Templates", app.target == .Home ? "What your home starts from. Your own settings stay over it." : "The system you start from. Your own settings stay over it.", em)
 	ui.spacer(ui.px(em * 1.2))
 	if app.info == nil { return }
 	current := layer_template(app.draft)
@@ -843,7 +875,7 @@ option_detail :: proc(app: ^App, em: f32) {
 	machine := layer_get(app.machine, steps(path))
 	if ui.list_card("###layers") {
 		// (the machine's layer is above the person's: configuration.md, "The layers")
-		layer_row("machine", "This machine", machine, machine != nil, em)
+		layer_row("machine", app.target == .Home ? "This home" : "This machine", machine, machine != nil, em)
 		layer_row("you", "You", mine, machine == nil && mine != nil, em)
 		layer_row("template", app.info.template_title != "" ? app.info.template_title : "The template", tpl, machine == nil && mine == nil && tpl != nil, em)
 		layer_row("nixos", "NixOS and its modules", known ? f.default : json.Value(json.String(entry.version)), machine == nil && mine == nil && tpl == nil, em)

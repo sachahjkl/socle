@@ -32,7 +32,7 @@ jobs:
       - name: nix flake check
         run: nix flake check --no-build
       - name: checks and package
-        run: nix build --no-link -L .#checks.x86_64-linux.pre-commit .#checks.x86_64-linux.layers .#checks.x86_64-linux.templates .#socle
+        run: nix build --no-link -L .#checks.x86_64-linux.pre-commit .#checks.x86_64-linux.layers .#checks.x86_64-linux.templates .#checks.x86_64-linux.homes .#socle
       - name: socletool and tests
         run: |
           nix develop --command sh -c '

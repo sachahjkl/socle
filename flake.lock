@@ -248,6 +248,25 @@
         "url": "https://flakehub.com/f/cachix/git-hooks.nix/0.1.941"
       }
     },
+    "home-manager": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794943722,
+        "narHash": "sha256-Qkh6uNyMsic61gfyOO8VXnC+HEBdti6Xe2kKiMf66O0=",
+        "rev": "5643e73425b85ac359ba2aaf83deae8ce1cd7968",
+        "revCount": 6844,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/nix-community/home-manager/0.2605.6844%2Brev-5643e73425b85ac359ba2aaf83deae8ce1cd7968/01a1eafd-4a85-7bc1-805d-fd46c00cff4b/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/nix-community/home-manager/0.2605"
+      }
+    },
     "import-tree": {
       "locked": {
         "lastModified": 1788467110,
@@ -365,6 +384,7 @@
         "determinate": "determinate",
         "disko": "disko",
         "git-hooks": "git-hooks",
+        "home-manager": "home-manager",
         "nixpkgs": "nixpkgs_3"
       }
     },

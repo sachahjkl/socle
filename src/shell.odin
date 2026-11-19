@@ -164,9 +164,14 @@ sidebar :: proc(app: ^App, em: f32) {
 			if ui.strip("###nav_strip", {axes = {.Y}}) {
 				ui.spacer(ui.px(em * 0.8))
 				if nav_line(app, "Overview", "Overview", PAGE_ICONS[.Overview], app.page == .Overview, em) { app.page = .Overview }
-				nav_group("System", em)
-				for p in ([]Page{.Apps, .People, .Desktop}) {
-					if nav_line(app, fmt.tprintf("%v", p), PAGE_TITLES[p], PAGE_ICONS[p], app.page == p, em) { app.page = p }
+				nav_group(app.target == .Home ? "Home" : "System", em)
+				// (socle's own pages, where the target's evaluation lists them: a home has no people, no desktop)
+				OWN := [3]struct { page: Page, id: string }{{.Apps, "apps"}, {.People, "people"}, {.Desktop, "desktop"}}
+				for o in OWN {
+					listed := app.info == nil
+					if app.info != nil { for def in app.info.pages { listed ||= def.id == o.id } }
+					if !listed { continue }
+					if nav_line(app, fmt.tprintf("%v", o.page), PAGE_TITLES[o.page], PAGE_ICONS[o.page], app.page == o.page, em) { app.page = o.page }
 				}
 				if app.info != nil {
 					for def in app.info.pages {

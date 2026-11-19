@@ -7,6 +7,7 @@ import toolbox "gt:toolbox"
 
 DEMO_OUT :: "src/demo/info.json"
 DEMO_LAYER_OUT :: "src/demo/system.json"
+GALLERY_OUT :: "src/demo/gallery.json"
 
 // `demo`: src/demo/info.json, the evaluation of tests/demo that the window shows with --demo (the pictures, the film,
 // the tests). An evaluation kept, so the demo needs no nix and gives the same pictures each time.
@@ -28,5 +29,14 @@ demo_run :: proc(args: []string) -> cli.Exit {
 	machine, merr := os.read_entire_file_from_path("tests/demo/socle/hosts/house-laptop.json", context.temp_allocator)
 	if merr != nil || os.write_entire_file("src/demo/host.json", machine) != nil { return toolbox.done("src/demo/host.json cannot be written") }
 	fmt.println("wrote src/demo/host.json")
+	// (every template, of both targets: the installer and the start of a home list them before any folder evaluates)
+	gallery := `let f = builtins.getFlake (toString ./.); in builtins.attrValues (builtins.mapAttrs (n: t: { ref = "socle#${n}"; inherit (t) title description target; parent = t.parent or null; }) f.socleTemplates)`
+	gs, gout, gerrs, gerr := os.process_exec({command = {"nix", "eval", "--json", "--impure", "--no-warn-dirty", "--expr", gallery}, env = env}, context.temp_allocator)
+	if gerr != nil || !gs.exited || gs.exit_code != 0 {
+		fmt.eprint(string(gerrs))
+		return toolbox.done("nix eval of the templates failed")
+	}
+	if os.write_entire_file(GALLERY_OUT, gout) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", GALLERY_OUT)) }
+	fmt.printfln("wrote %s", GALLERY_OUT)
 	return .Done
 }

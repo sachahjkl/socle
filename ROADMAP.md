@@ -2,18 +2,18 @@
 
 ## Now
 
-- **A home on any system.** A person's apps, shell and settings through Home Manager, on any Linux with Nix or on
-  macOS; socle installs Nix if it is missing. [Targets](src/md/data/targets.md).
+- **Your own template.** Turn the current system or home into a template, extend another one, export it as a git
+  repository that anyone can start from. [Templates](src/md/data/templates.md).
 
 ## Next
 
 - **The installer's other disks.** Install beside another system on a disk that it shares, and on a machine that
   starts in legacy BIOS mode. [The installer](src/md/features/installer.md).
+- **A home without Nix, and on macOS.** A program that runs without Nix, which installs Nix (Determinate's installer)
+  and then starts a home; the same on macOS. [Targets](src/md/data/targets.md).
 
 ## Later
 
-- **Your own template.** Turn the current system into a template, extend another one, export it as a git repository
-  that anyone can start from. [Templates](src/md/data/templates.md).
 - **Several machines.** One configuration for several hosts, and a deployment to another machine over SSH.
 
 ## Maybe
