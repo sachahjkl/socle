@@ -1,0 +1,10 @@
+{
+  "socle": 1,
+  "values": {
+    "socle": {
+      "desktop": {"environment": "cosmic", "dark": true},
+      "packages": {"firefox": true, "git": true, "zed-editor": true}
+    },
+    "virtualisation": {"podman": {"enable": true}}
+  }
+}

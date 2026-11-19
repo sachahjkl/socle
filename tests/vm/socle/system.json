@@ -1,0 +1,10 @@
+{
+  "socle": 1,
+  "template": "socle#family-desktop",
+  "values": {
+    "socle": {
+      "people": {"demo": {"description": "Demo", "admin": true}},
+      "desktop": {"autoLogin": {"enable": true, "user": "demo"}}
+    }
+  }
+}

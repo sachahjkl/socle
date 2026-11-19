@@ -1,132 +1,451 @@
 package socle
 
-// The draft, its changes against the applied version, and the apply: prepare, try, keep (src/md/features/apply.md).
-// In the demo, preparing is a clock that runs PREPARE_MS and the helper is this window: the stages and their order
-// are the real ones.
+// The apply: prepare (nix build), try (the helper activates it, a timer of the system goes back by itself), keep
+// (the helper makes it the default; the folder commits the layers), or at the next start (src/md/features/apply.md).
+// In the demo, preparing is a clock and the helper is this window: the stages, their order and their words are the
+// real ones.
 
+import "core:encoding/json"
 import "core:fmt"
+import "core:os"
 import "core:strings"
+import "core:sync"
+import "core:time"
 import lucide "gt:lucide"
 import "gt:ui"
 
-PREPARE_MS  :: 5200.0
-KEEP_MS     :: 60000.0
-DOWNLOAD_MB :: 640
-PARTS       :: 52
+DEMO_PREPARE_MS :: 5200.0
+KEEP_MS         :: 60000.0
 
 REVIEW_VIEW :: "review"
 KEEP_VIEW   :: "keep"
 
-// A change of the draft, in words: the page it belongs to and what it does.
-Change :: struct {
-	page:    string,
-	text:    string,
-	restart: bool,   // the session restarts when it applies
+Stage :: enum {
+	Idle,
+	Preparing,   // nix build
+	Starting,    // the helper activates it (pkexec asks for a password)
+	Trying,      // it runs on trial: keep, go back, or the timer goes back
+	Finishing,   // keep, go back or at the next start: the helper and the commit
 }
-
-Stage :: enum { Idle, Preparing, Trying }
 
 Apply :: struct {
 	stage:      Stage,
 	now:        int,     // the review's choice: 0 now (try, then keep), 1 at the next start
 	started_ms: f64,     // the stage's start, on the window's clock
 	at_boot:    bool,    // the applied version waits for the next start
+	path:       string,  // the system built (or the version gone back to)
+	summary:    string,  // the commit's message
+	progress:   Progress,
+	failure:    string,  // why the last apply stopped ("": it did not)
+	back:       bool,    // a return to an earlier version: nothing to build or commit
 }
 
-// The changes, made again each time the draft changes (never in a frame: the bar and the review read the list).
-changes_update :: proc(app: ^App) {
-	for c in app.changes { delete(c.text) }
-	clear(&app.changes)
-	d, a := &app.draft, &app.applied
-	if d.desktop != a.desktop {
-		append(&app.changes, Change{"Desktop", fmt.aprintf("Environment: %s, in place of %s", DESKTOPS[d.desktop], DESKTOPS[a.desktop]), true})
-	}
-	if d.dark != a.dark { append(&app.changes, Change{"Desktop", strings.clone(d.dark ? "Dark look" : "Light look"), false}) }
-	if d.auto_login != a.auto_login || (d.auto_login && d.login_as != a.login_as) {
-		text := d.auto_login ? fmt.aprintf("Log in by itself as %s", PEOPLE[d.login_as]) : strings.clone("Ask every person's password at start")
-		append(&app.changes, Change{"Desktop", text, false})
-	}
-	if d.lock_after != a.lock_after { append(&app.changes, Change{"Desktop", fmt.aprintf("Lock the screen: %s", LOCKS[d.lock_after]), false}) }
-	for p, i in CATALOGUE {
-		if d.installed[i] == a.installed[i] { continue }
-		text: string
-		switch {
-		case d.installed[i]:  text = fmt.aprintf("Add %s for everyone", p.name)
-		case p.template:      text = fmt.aprintf("Remove %s, which the template adds", p.name)
-		case:                 text = fmt.aprintf("Remove %s", p.name)
-		}
-		append(&app.changes, Change{"Apps", text, false})
-	}
+// What a build says of itself (nix's internal-json log).
+Progress :: struct {
+	builds_done, builds_expected: int,
+	paths_done, paths_expected:   int,
+	bytes_done, bytes_expected:   i64,
+	doing:                        string,   // what it builds or downloads now
 }
 
-changes_restart :: proc(app: ^App) -> bool {
-	for c in app.changes { if c.restart { return true } }
-	return false
-}
+apply_busy :: proc(app: ^App) -> bool { return app.apply.stage != .Idle }
 
-draft_set :: proc(app: ^App, s: Settings) {
-	app.draft = s
-	changes_update(app)
+// How far preparing is, 0..1.
+apply_fraction :: proc(app: ^App) -> f32 {
+	if app.source == .Demo { return clamp(f32((ui.now_ms() - app.apply.started_ms) / DEMO_PREPARE_MS), 0, 1) }
+	p := app.apply.progress
+	done := f32(p.builds_done + p.paths_done)
+	all := f32(p.builds_expected + p.paths_expected)
+	if p.bytes_expected > 0 { return clamp(0.5 * f32(p.bytes_done) / f32(p.bytes_expected) + 0.5 * (all > 0 ? done / all : 0), 0, 1) }
+	return all > 0 ? clamp(done / all, 0, 1) : 0
 }
-
-draft_discard :: proc(app: ^App) { draft_set(app, app.applied) }
 
 // The review accepted: the stage that prepares the new system.
 apply_start :: proc(app: ^App) {
-	app.apply = {stage = .Preparing, now = app.apply.now, started_ms = ui.now_ms()}
+	if apply_busy(app) { return }
+	delete(app.apply.failure)
+	delete(app.apply.summary)
+	delete(app.apply.path)
+	app.apply = {stage = .Preparing, now = app.apply.now, started_ms = ui.now_ms(), summary = summary_of(app)}
+	if app.source == .Demo { return }
+	ui.task(&app.main.state, build_work, build_done, new_clone(Build{app = app, folder = app.folder, host = app.host}), build_lost)
 }
 
-// How far preparing is, 0..1.
-apply_progress :: proc(app: ^App) -> f32 {
-	return clamp(f32((ui.now_ms() - app.apply.started_ms) / PREPARE_MS), 0, 1)
+// A return to an earlier version: the same try and keep, nothing built.
+apply_go_back :: proc(app: ^App, g: Generation) {
+	if apply_busy(app) || g.running { return }
+	delete(app.apply.failure)
+	delete(app.apply.summary)
+	delete(app.apply.path)
+	app.apply = {stage = .Starting, now = 0, started_ms = ui.now_ms(), back = true, path = strings.clone(g.path), summary = fmt.aprintf("Back to version %d", g.number)}
+	if app.source == .Demo { apply_try_started(app, ""); return }
+	helper_start(app, {"try", g.path})
 }
 
-// What moves with the clock: the end of preparing, the countdown of a try. Called before each build.
+@(private = "file")
+summary_of :: proc(app: ^App) -> string {
+	switch len(app.changes) {
+	case 0: return strings.clone("Apply the settings")
+	case 1: return strings.clone(app.changes[0].text)
+	}
+	return fmt.aprintf("%s, and %d more", app.changes[0].text, len(app.changes) - 1)
+}
+
+// What moves with the clock: the demo's preparing, the countdown of a try. Called before each build.
 apply_step :: proc(app: ^App) {
 	switch app.apply.stage {
-	case .Idle:
+	case .Idle, .Starting, .Finishing:
 	case .Preparing:
 		ui.keep_animating()
-		if apply_progress(app) < 1 { return }
-		if app.apply.now == 1 {
-			apply_record(app, true)
-			return
-		}
-		app.apply.stage, app.apply.started_ms = .Trying, ui.now_ms()
-		ui.view_open(ui.state_views(&app.main.state), KEEP_VIEW, app)
+		if app.source == .Demo && apply_fraction(app) >= 1 { apply_built(app, "/nix/store/demo-system") }
 	case .Trying:
 		ui.keep_animating()
-		if ui.now_ms() - app.apply.started_ms >= KEEP_MS { apply_revert(app) }
+		if ui.now_ms() - app.apply.started_ms >= KEEP_MS {
+			// (the helper's timer has gone back already; the window follows it)
+			app.apply.stage = .Idle
+			ui.announce(&app.announcer, .Info, fmt.tprintf("Back to version %d", current_number(app)), "Nobody kept the new version. Your changes wait in the draft.")
+			load_start(app)
+		}
 	}
 }
 
-// The new version kept (or set for the next start): it is the applied one, and the history's first.
-apply_record :: proc(app: ^App, at_boot: bool) {
-	app.version += 1
-	title := len(app.changes) > 0 ? app.changes[0].text : "Settings"
-	pages := make([dynamic]string, context.temp_allocator)
-	for c in app.changes {
-		known := false
-		for p in pages { known ||= p == c.page }
-		if !known { append(&pages, c.page) }
+// The system is built: try it now, or make it the default for the next start.
+@(private = "file")
+apply_built :: proc(app: ^App, path: string) {
+	delete(app.apply.path)
+	app.apply.path = strings.clone(path)
+	app.apply.stage, app.apply.started_ms = .Starting, ui.now_ms()
+	if app.source == .Demo {
+		if app.apply.now == 1 { apply_finished(app, true, ""); return }
+		apply_try_started(app, "")
+		return
 	}
-	detail := fmt.aprintf("%s · %d changes · %d MB", strings.join(pages[:], ", ", context.temp_allocator), len(app.changes), DOWNLOAD_MB)
-	inject_at(&app.history, 0, Version{app.version, "Today, 10:41", strings.clone(title), detail, false})
-	app.applied = app.draft
-	app.apply = {stage = .Idle, now = app.apply.now, at_boot = at_boot}
-	changes_update(app)
-	if at_boot {
-		ui.announce(&app.announcer, .Good, fmt.tprintf("Version %d is ready", app.version), "It starts at the next start of the machine.")
-	} else {
-		ui.announce(&app.announcer, .Good, fmt.tprintf("Version %d kept", app.version))
-	}
+	helper_start(app, app.apply.now == 1 ? []string{"boot", path} : []string{"try", path})
 }
 
-// The try not kept: the previous version runs again; the draft stays as it was.
+// The helper activated the new system: the countdown starts.
+@(private = "file")
+apply_try_started :: proc(app: ^App, why: string) {
+	if why != "" { apply_failed(app, why); return }
+	app.apply.stage, app.apply.started_ms = .Trying, ui.now_ms()
+	ui.view_open(ui.state_views(&app.main.state), KEEP_VIEW, app)
+}
+
+// Keep the version on trial.
+apply_keep :: proc(app: ^App) {
+	app.apply.stage = .Finishing
+	if app.source == .Demo { apply_finished(app, false, ""); return }
+	helper_start(app, {"keep"})
+}
+
+// Go back to the running version before the try.
 apply_revert :: proc(app: ^App) {
-	app.apply.stage = .Idle
-	ui.announce(&app.announcer, .Info, fmt.tprintf("Back to version %d", app.version), "Your changes wait in the draft.")
+	app.apply.stage = .Finishing
+	if app.source == .Demo {
+		app.apply.stage = .Idle
+		ui.announce(&app.announcer, .Info, fmt.tprintf("Back to version %d", current_number(app)), "Your changes wait in the draft.")
+		return
+	}
+	app.apply.back = true   // (nothing to commit)
+	helper_start(app, {"revert"})
 }
+
+@(private = "file")
+apply_failed :: proc(app: ^App, why: string) {
+	app.apply.stage = .Idle
+	delete(app.apply.failure)
+	app.apply.failure = strings.clone(why)
+	ui.announce(&app.announcer, .Bad, "The new version was not applied", why, stays = true)
+}
+
+// The version is kept (or set for the next start): the folder commits the layers; the history shows it first.
+@(private = "file")
+apply_finished :: proc(app: ^App, at_boot: bool, why: string) {
+	if why != "" { apply_failed(app, why); return }
+	if app.source == .Demo {
+		n := current_number(app) + 1
+		for &g in app.generations { g.running = at_boot ? g.running : false; g.default_ = false }
+		inject_at(&app.generations, 0, Generation{
+			number = n, date = time.now(), title = strings.clone(app.apply.summary), revision = strings.clone("demo"),
+			running = !at_boot, default_ = true, path = strings.clone(app.apply.path),
+		})
+		layer_destroy(&app.committed)
+		app.committed = layer_clone(app.draft)
+		for k, v in app.lock_now { app.lock_committed[k] = v }
+		app.apply.stage, app.apply.at_boot = .Idle, at_boot
+		changes_update(app)
+		ui.announce(&app.announcer, .Good, at_boot ? fmt.tprintf("Version %d is ready", n) : fmt.tprintf("Version %d kept", n), at_boot ? "It starts at the next start of the machine." : "")
+		return
+	}
+	app.apply.at_boot = at_boot
+	if app.apply.back {
+		app.apply.stage = .Idle
+		load_start(app)
+		return
+	}
+	ui.task(&app.main.state, commit_work, commit_done, new_clone(Commit{app = app, folder = app.folder, message = strings.clone(app.apply.summary)}), commit_lost)
+}
+
+current_number :: proc(app: ^App) -> int {
+	for g in app.generations { if g.running { return g.number } }
+	return len(app.generations) > 0 ? app.generations[0].number : 0
+}
+
+////////////////////////////////
+// The build
+
+@(private = "file")
+Build :: struct {
+	app:          ^App,
+	folder, host: string,
+	path, why:    string,
+	// the log's state, the worker's own
+	kinds:        map[u64]int,   // an activity's id -> its type
+	bytes:        map[u64]i64,   // a download's bytes done
+	progress:     Progress,
+	posted_ms:    f64,
+	errors:       strings.Builder,
+}
+
+@(private = "file")
+build_work :: proc(data: rawptr) {
+	b := (^Build)(data)
+	// (a flake in git sees only the files git knows: socle adds its own, and the person's code: README.md, "Subtleties")
+	add := run({"git", "-C", b.folder, "add", "-A", "--", "socle", "custom", "flake.lock"})
+	delete(add.stdout); delete(add.stderr)
+	b.kinds = make(map[u64]int)
+	b.bytes = make(map[u64]i64)
+	b.errors = strings.builder_make()
+	target := fmt.tprintf("%s#nixosConfigurations.%s.config.system.build.toplevel", b.folder, b.host)
+	r := run_lines({"nix", "build", "--no-link", "--print-out-paths", "--no-warn-dirty", "--log-format", "internal-json", "-v", target}, "", build_line, b)
+	if r.ok {
+		b.path = strings.clone(strings.trim_space(r.stdout))
+	} else {
+		msg := strings.trim_space(strings.to_string(b.errors))
+		b.why = strings.clone(msg != "" ? msg : "nix build failed")
+	}
+	delete(r.stdout); delete(r.stderr)
+	delete(b.kinds); delete(b.bytes)
+	strings.builder_destroy(&b.errors)
+}
+
+// One line of nix's log: activities start and stop, report their progress, and errors are messages of level 0.
+@(private = "file")
+build_line :: proc(user: rawptr, text: string) {
+	b := (^Build)(user)
+	if !strings.has_prefix(text, "@nix ") { return }
+	v, err := json.parse_string(text[5:], parse_integers = true, allocator = context.temp_allocator)
+	if err != nil { return }
+	o, _ := v.(json.Object)
+	id := u64(num(o["id"]))
+	switch str(o["action"]) {
+	case "start":
+		kind := int(num(o["type"]))
+		b.kinds[id] = kind
+		words := str(o["text"])
+		if (kind == ACT_BUILD || kind == ACT_COPY_PATH) && words != "" {
+			delete(b.progress.doing)
+			b.progress.doing = strings.clone(words)
+		}
+	case "stop":
+		delete_key(&b.kinds, id)
+	case "result":
+		fields := arr(o["fields"])
+		switch int(num(o["type"])) {
+		case RES_PROGRESS:
+			if len(fields) < 2 { break }
+			done, expected := int(num(fields[0])), int(num(fields[1]))
+			switch b.kinds[id] {
+			case ACT_BUILDS:     b.progress.builds_done, b.progress.builds_expected = done, expected
+			case ACT_COPY_PATHS: b.progress.paths_done, b.progress.paths_expected = done, expected
+			case ACT_COPY_PATH, ACT_FILE_TRANSFER:
+				b.bytes[id] = i64(done)
+				total: i64
+				for _, n in b.bytes { total += n }
+				b.progress.bytes_done = total
+			}
+		case RES_SET_EXPECTED:
+			if len(fields) >= 2 && int(num(fields[0])) == ACT_COPY_PATH { b.progress.bytes_expected = i64(num(fields[1])) }
+		}
+	case "msg":
+		if int(num(o["level"])) == 0 {
+			strings.write_string(&b.errors, strip_colours(str(o["msg"])))
+			strings.write_byte(&b.errors, '\n')
+		}
+	}
+	// (at most ten times a second: the window shows it, it need not see each line)
+	now := f64(time.tick_now()._nsec) / 1e6
+	if now - b.posted_ms > 100 {
+		b.posted_ms = now
+		p := new(Progress)
+		p^ = b.progress
+		p.doing = strings.clone(b.progress.doing)
+		if !ui.post(&b.app.main.state, progress_post, p) { delete(p.doing); free(p) }
+	}
+}
+
+// nix's activity and result types (src/libutil/logging.hh)
+@(private = "file") ACT_COPY_PATH     :: 100 + 1
+@(private = "file") ACT_FILE_TRANSFER :: 100 + 2
+@(private = "file") ACT_COPY_PATHS    :: 100 + 4
+@(private = "file") ACT_BUILDS        :: 100 + 5
+@(private = "file") ACT_BUILD         :: 100 + 6
+@(private = "file") RES_PROGRESS      :: 100 + 5
+@(private = "file") RES_SET_EXPECTED  :: 100 + 6
+
+@(private = "file")
+progress_post :: proc(data: rawptr, _: u64) {
+	p := (^Progress)(data)
+	app := the_app
+	if app != nil && app.apply.stage == .Preparing {
+		delete(app.apply.progress.doing)
+		app.apply.progress = p^
+	} else {
+		delete(p.doing)
+	}
+	free(p)
+}
+
+// The escapes of a terminal's colours, which nix puts in its messages.
+strip_colours :: proc(s: string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	for i := 0; i < len(s); i += 1 {
+		if s[i] == 0x1b && i + 1 < len(s) && s[i + 1] == '[' {
+			j := i + 2
+			for j < len(s) && !(s[j] >= '@' && s[j] <= '~') { j += 1 }
+			i = j
+			continue
+		}
+		strings.write_byte(&b, s[i])
+	}
+	return strings.to_string(b)
+}
+
+@(private = "file")
+build_done :: proc(data: rawptr, _: u64) {
+	b := (^Build)(data)
+	app := b.app
+	if app.apply.stage == .Preparing {
+		if b.why != "" { apply_failed(app, b.why) } else { apply_built(app, b.path) }
+	}
+	delete(b.path); delete(b.why); delete(b.progress.doing)
+	free(b)
+}
+
+@(private = "file")
+build_lost :: proc(data: rawptr) { free(data) }
+
+////////////////////////////////
+// The helper (src/md/infrastructure/helper.md): `socle helper <verb>` through pkexec
+
+@(private = "file")
+Helper_Call :: struct {
+	app:  ^App,
+	args: []string,
+	why:  string,
+}
+
+// The installed socle (pkexec's rule names its path), else this program.
+helper_program :: proc() -> string {
+	installed := "/run/current-system/sw/bin/socle"
+	if t := link_target(installed); t != "" { return t }
+	exe, _ := os.get_executable_path(context.temp_allocator)
+	return exe
+}
+
+@(private = "file")
+helper_start :: proc(app: ^App, args: []string) {
+	copy := make([]string, len(args))
+	for a, i in args { copy[i] = strings.clone(a) }
+	ui.task(&app.main.state, helper_work, helper_done, new_clone(Helper_Call{app = app, args = copy}), helper_lost)
+}
+
+@(private = "file")
+helper_work :: proc(data: rawptr) {
+	h := (^Helper_Call)(data)
+	command := make([dynamic]string, context.temp_allocator)
+	append(&command, "pkexec", helper_program(), "helper")
+	append(&command, ..h.args)
+	r := run(command[:])
+	switch {
+	case r.ok:
+	case r.code == 126 || r.code == 127:
+		h.why = strings.clone("An administrator's password is needed to change the system.")
+	case:
+		msg := strings.trim_space(r.stderr)
+		h.why = strings.clone(msg != "" ? msg : "The helper failed.")
+	}
+	delete(r.stdout); delete(r.stderr)
+}
+
+@(private = "file")
+helper_done :: proc(data: rawptr, _: u64) {
+	h := (^Helper_Call)(data)
+	app := h.app
+	switch h.args[0] {
+	case "try":
+		if app.apply.stage == .Starting { apply_try_started(app, h.why) }
+	case "boot":
+		apply_finished(app, true, h.why)
+	case "keep":
+		apply_finished(app, false, h.why)
+	case "revert":
+		app.apply.stage = .Idle
+		if h.why != "" { ui.announce(&app.announcer, .Bad, "Going back failed", h.why, stays = true) }
+		else { ui.announce(&app.announcer, .Info, "Back to the version before", "Your changes wait in the draft.") }
+		load_start(app)
+	case "init":
+		if h.why != "" { ui.announce(&app.announcer, .Bad, "socle could not take over this machine", h.why, stays = true) }
+		load_start(app)
+	}
+	for a in h.args { delete(a) }
+	delete(h.args)
+	delete(h.why)
+	free(h)
+}
+
+@(private = "file")
+helper_lost :: proc(data: rawptr) { free(data) }
+
+// The machine taken over: the helper writes /etc/socle from a template (setup.odin).
+setup_start :: proc(app: ^App, ref: string) {
+	helper_start(app, {"init", ref})
+}
+
+////////////////////////////////
+// The commit
+
+@(private = "file")
+Commit :: struct { app: ^App, folder, message, why: string }
+
+@(private = "file")
+commit_work :: proc(data: rawptr) {
+	c := (^Commit)(data)
+	add := run({"git", "-C", c.folder, "add", "-A", "--", "socle", "custom", "flake.lock"})
+	delete(add.stdout); delete(add.stderr)
+	r := run({"git", "-C", c.folder, "-c", "user.name=socle", "-c", "user.email=socle@localhost", "commit", "-q", "--allow-empty", "-m", c.message})
+	if !r.ok { c.why = strings.clone(strings.trim_space(r.stderr)) }
+	delete(r.stdout); delete(r.stderr)
+}
+
+@(private = "file")
+commit_done :: proc(data: rawptr, _: u64) {
+	c := (^Commit)(data)
+	app := c.app
+	app.apply.stage = .Idle
+	if c.why != "" { ui.announce(&app.announcer, .Warn, "The version runs, but the folder did not record it", c.why) }
+	else if app.apply.at_boot { ui.announce(&app.announcer, .Good, "The new version is ready", "It starts at the next start of the machine.") }
+	else { ui.announce(&app.announcer, .Good, "The new version is kept") }
+	delete(c.message); delete(c.why)
+	free(c)
+	load_start(app)
+}
+
+@(private = "file")
+commit_lost :: proc(data: rawptr) { free(data) }
+
+////////////////////////////////
+// The dialogs
 
 views_register_all :: proc(app: ^App) {
 	vs := ui.state_views(&app.main.state)
@@ -144,33 +463,23 @@ review_view :: proc(v: ^ui.View, app: ^App) {
 	em := ui.font_size()
 	if ui.dialog_body("review_body") {
 		for c, i in app.changes {
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2)), axis = .X, cross = .Center})
+			ui.next({width = ui.fill(), height = ui.children_sum(), axis = .X, cross = .Center})
 			if ui.row(id = fmt.tprintf("###change%d", i)) {
 				if ui.tags("weak") {
-					ui.next({width = ui.px(em * 5.5), height = ui.pct(1), text_pad = 0})
+					ui.next({width = ui.px(em * 6), height = ui.px(ui.dense(em * 2)), text_pad = 0})
 					ui.label(fmt.tprintf("%s###change_page%d", c.page, i))
 				}
-				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+				ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0, flags = {.Text_Wrap}})
 				ui.label(fmt.tprintf("%s###change_text%d", c.text, i))
 			}
 			if i + 1 < len(app.changes) { ui.hline(ui.fill()) }
 		}
-		if changes_restart(app) {
+		if app.eval_error != "" {
 			ui.spacer(ui.px(em * 0.8))
-			ui.next({width = ui.fill(), height = ui.children_sum(), axis = .X})
-			if ui.well("###restart", pad = ui.INNER_PAD) {
-				ui.next({width = ui.px(em * 1.6), height = ui.px(em * 1.4), font = ui.lucide_icons(), fg = ui.hue(.Yellow), text_pad = 0})
-				ui.build_box({.Draw_Text, .No_Text_Trunc}, lucide.ALERT_TRIANGLE + "###restart_icon")
-				ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y})
-				if ui.column(id = "###restart_words") {
-					ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0})
-					ui.label("The session restarts###restart_title")
-					if ui.tags("weak") {
-						ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0, flags = {.Text_Wrap}})
-						ui.label("A new desktop closes the open apps. Save your work first, or apply at the next start.###restart_note")
-					}
-				}
-			}
+			note_well("eval", lucide.ALERT_TRIANGLE, .Red, "The settings do not evaluate", app.eval_error, em)
+		} else if changes_restart(app) {
+			ui.spacer(ui.px(em * 0.8))
+			note_well("restart", lucide.ALERT_TRIANGLE, .Yellow, "The session restarts", "A new desktop closes the open apps. Save your work first, or apply at the next start.", em)
 		}
 		ui.spacer(ui.px(em * 0.8))
 		if ui.form_row("Apply") {
@@ -180,9 +489,27 @@ review_view :: proc(v: ^ui.View, app: ^App) {
 	}
 	if ui.dialog_buttons("review_buttons") {
 		if ui.button("review_back", "Back").clicked { ui.view_end(v, ui.VIEW_CANCELLED) }
-		if ui.button("review_go", "Prepare and apply", lucide.ARROW_RIGHT, {intent = .Primary}).clicked {
+		if ui.button("review_go", "Prepare and apply", lucide.ARROW_RIGHT, {intent = .Primary, disabled = app.eval_error != "" || app.evaluating}).clicked {
 			ui.view_end(v, 0)
 			apply_start(app)
+		}
+	}
+}
+
+// A well with a mark, a title and a note: a warning in a dialog or a page.
+note_well :: proc(id, icon: string, hue: ui.Hue, title, note: string, em: f32) {
+	ui.next({width = ui.fill(), height = ui.children_sum(), axis = .X})
+	if ui.well(fmt.tprintf("###%s_well", id), pad = ui.INNER_PAD) {
+		ui.next({width = ui.px(em * 1.6), height = ui.px(em * 1.4), font = ui.lucide_icons(), fg = ui.hue(hue), text_pad = 0})
+		ui.build_box({.Draw_Text, .No_Text_Trunc}, fmt.tprintf("%s###%s_icon", icon, id))
+		ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y})
+		if ui.column(id = fmt.tprintf("###%s_words", id)) {
+			ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0})
+			ui.label(fmt.tprintf("%s###%s_title", title, id))
+			if ui.tags("weak") {
+				ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0, flags = {.Text_Wrap}})
+				ui.label(fmt.tprintf("%s###%s_note", note, id))
+			}
 		}
 	}
 }
@@ -190,8 +517,9 @@ review_view :: proc(v: ^ui.View, app: ^App) {
 @(private = "file")
 keep_view :: proc(v: ^ui.View, app: ^App) {
 	em := ui.font_size()
+	if app.apply.stage != .Trying && app.apply.stage != .Finishing { ui.view_end(v, ui.VIEW_CANCELLED); return }
 	left := max(0, KEEP_MS - (ui.now_ms() - app.apply.started_ms))
-	if app.apply.stage != .Trying { ui.view_end(v, ui.VIEW_CANCELLED); return }
+	next := current_number(app) + (app.apply.back ? 0 : 1)
 	if ui.dialog_body("keep_body") {
 		ui.next({width = ui.fill(), height = ui.children_sum(), axis = .X, cross = .Center})
 		if ui.row(id = "###keep_row") {
@@ -201,10 +529,10 @@ keep_view :: proc(v: ^ui.View, app: ^App) {
 			ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y})
 			if ui.column(id = "###keep_words") {
 				ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0, flags = {.Text_Wrap}})
-				ui.label(fmt.tprintf("Version %d runs now.###keep_now", app.version + 1))
+				ui.label(app.apply.back ? fmt.tprintf("Version %d runs now.###keep_now", next) : fmt.tprintf("Version %d runs now.###keep_now", next))
 				if ui.tags("weak") {
 					ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0, flags = {.Text_Wrap}})
-					ui.label(fmt.tprintf("If nobody answers, the system goes back to version %d by itself.###keep_note", app.version))
+					ui.label(fmt.tprintf("If nobody answers, the system goes back to version %d by itself.###keep_note", current_number(app)))
 				}
 			}
 		}
@@ -213,13 +541,16 @@ keep_view :: proc(v: ^ui.View, app: ^App) {
 		ui.progress("###keep_left", f32(left / KEEP_MS))
 	}
 	if ui.dialog_buttons("keep_buttons") {
-		if ui.button("keep_back", "Go back now", lucide.ROTATE_CCW).clicked {
+		busy := app.apply.stage == .Finishing
+		if ui.button("keep_back", "Go back now", lucide.ROTATE_CCW, {disabled = busy}).clicked {
 			ui.view_end(v, ui.VIEW_CANCELLED)
 			apply_revert(app)
 		}
-		if ui.button("keep_yes", "Keep", lucide.CHECK, {intent = .Primary}).clicked {
+		if ui.button("keep_yes", "Keep", lucide.CHECK, {intent = .Primary, busy = busy}).clicked {
 			ui.view_end(v, 0)
-			apply_record(app, false)
+			apply_keep(app)
 		}
 	}
 }
+
+_ :: sync.Mutex

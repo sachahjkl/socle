@@ -41,7 +41,7 @@ main :: proc() {
 shoot :: proc(out: string) -> string {
 	t := new(Take)
 	defer free(t)
-	t.app = socle.open({args = {fmt.tprintf("--size=%dx%d", WINDOW_LOGICAL.x, WINDOW_LOGICAL.y)}, headless = true, gpu = true})
+	t.app = socle.open({args = {"--demo", fmt.tprintf("--size=%dx%d", WINDOW_LOGICAL.x, WINDOW_LOGICAL.y)}, headless = true, gpu = true})
 	if t.app == nil { return "socle's window does not open" }
 	defer socle.close(t.app)
 	platform.set_offscreen_dpi(t.app.main.win, DPI_STAGED)
@@ -99,19 +99,19 @@ script :: proc(t: ^Take) {
 	film.fade(r, 0.7)
 	film.pointer_show(r, true, film.center(film.box(r, "page_scroll"), {0.6, 0.7}))
 	film.hold(r, 1.2)
-	point(t, "tile_Desktop", after = 0.5)
+	point(t, "tile_desktop", after = 0.5)
 	point(t, "status_updates", after = 0.6)
 
 	// apps: a search, one added, one of the template's taken away
-	tap(t, "navApps", after = 0.6)
+	tap(t, "nav_Apps", after = 0.6)
 	tap(t, "apps_field", after = 0.2)
 	film.type_text(r, "video", 9)
 	film.hold(r, 0.6)
-	tap(t, "app_act3", after = 0.7)   // OBS Studio
-	tap(t, "app_act4", after = 0.9)   // VLC, the template's
+	tap(t, "app_act9", after = 0.7)    // OBS Studio
+	tap(t, "app_act10", after = 0.9)   // VLC, the template's
 
 	// the desktop: another environment, a session that opens by itself
-	tap(t, "navDesktop", after = 0.7)
+	tap(t, "nav_Desktop", after = 0.7)
 	tap(t, "", "Plasma", after = 0.8)
 	tap(t, "login_toggle", after = 0.8)
 	point(t, "changes_count", after = 0.6)
@@ -121,24 +121,24 @@ script :: proc(t: ^Take) {
 	tap(t, "", "Now, on trial", after = 0.8)
 	tap(t, "review_go", after = 0.3)
 	film.pointer_show(r, true, film.center(film.box(r, "page_scroll"), {0.7, 0.6}))
-	film.hold(r, socle.PREPARE_MS / 1000 + 0.3)
+	film.hold(r, socle.DEMO_PREPARE_MS / 1000 + 0.3)
 
 	// the try: the countdown runs, then keep
 	film.hold(r, 2.6)
 	tap(t, "keep_yes", after = 1.6)
 
 	// the history: the new version on top
-	tap(t, "navHistory", after = 1.6)
+	tap(t, "nav_History", after = 1.6)
 	point(t, "version_back2", after = 0.8)
 
-	// the templates, then every option
-	tap(t, "navTemplates", after = 1.8)
-	tap(t, "navAll_Settings", after = 0.6)
+	// a page made from NixOS's own options, the templates, then every option
+	tap(t, "nav_printing", after = 1.2)
+	tap(t, "nav_Templates", after = 1.8)
+	tap(t, "nav_All_Settings", after = 0.6)
 	tap(t, "options_field", after = 0.2)
 	film.type_text(r, "printing", 10)
 	film.hold(r, 0.5)
-	tap(t, "option1", after = 1.0)
-	tap(t, "option0", after = 1.4)
+	tap(t, "", "services.printing.enable", after = 1.4)
 
 	film.pointer_show(r, false)
 	card_show(t.card, "", "socle", "socle.froment.software")

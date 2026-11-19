@@ -1,0 +1,11 @@
+{
+  "socle": 1,
+  "template": "socle#family-desktop",
+  "values": {
+    "socle": {
+      "packages": {"vlc": false, "mpv": true},
+      "people": {"ada": {"description": "Ada", "admin": true}},
+      "desktop": {"autoLogin": {"enable": true, "user": "ada"}}
+    }
+  }
+}

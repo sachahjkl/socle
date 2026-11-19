@@ -1,0 +1,10 @@
+{
+  "socle": 1,
+  "values": {
+    "socle": {
+      "desktop": {"environment": "gnome", "dark": true, "lockAfter": "5"},
+      "packages": {"firefox": true, "libreoffice": true, "vlc": true, "audacity": true, "krita": true, "supertuxkart": true}
+    },
+    "services": {"printing": {"enable": true}}
+  }
+}

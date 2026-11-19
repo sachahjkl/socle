@@ -1,0 +1,7 @@
+{
+  "socle": 1,
+  "values": {
+    "system": {"stateVersion": "26.05"},
+    "users": {"users": {"demo": {"initialPassword": "socle"}}}
+  }
+}

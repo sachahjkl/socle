@@ -26,8 +26,18 @@ One small native program, written in [Odin](https://odin-lang.org) on
 
 ## Status
 
-In development. The window runs on a demo system: it drives no Nix yet. [ROADMAP.md](ROADMAP.md) gives the plan,
-[src/md](src/md/README.md) the design, [docs/mockups](docs/mockups/README.md) the first sketches of the screens.
+Early. socle reads, changes, builds and switches a real NixOS system. It has not run on many machines yet: try it in
+its virtual machine first, where every change you apply is real but stays inside the machine.
+
+```sh
+nix run github:sachahjkl/socle#vm      # a NixOS that socle manages, its window open (password: socle)
+nix run github:sachahjkl/socle -- --demo   # the window on the demo system: nothing is changed
+```
+
+On a NixOS of your own, `socle` offers to take the machine over from a template: it writes `/etc/socle` with your
+hardware and your people, and nothing changes until you apply. From then on, the system comes from socle's folder.
+
+[ROADMAP.md](ROADMAP.md) gives the plan, [src/md](src/md/README.md) the design.
 
 ## Build
 

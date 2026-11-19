@@ -1,0 +1,13 @@
+{
+  "socle": 1,
+  "template": "socle#family-desktop",
+  "values": {
+    "socle": {
+      "people": {
+        "sacha": {"description": "Sacha", "admin": true},
+        "lou": {"description": "Lou"},
+        "noe": {"description": "Noé"}
+      }
+    }
+  }
+}

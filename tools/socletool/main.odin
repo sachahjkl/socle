@@ -35,6 +35,7 @@ commands :: proc() -> []toolbox.Command {
 	append(&list, r[1], r[2])
 	append(&list, toolbox.logo_command(logo()))
 	append(&list, site_command())
+	append(&list, toolbox.Command{name = "demo", usage = "src/demo/info.json: the evaluation of tests/demo that socle --demo shows", run = demo_run})
 	append(&list, toolbox.Command{name = "film", usage = "[out.mp4]  the presentation film: socle's window driven headless on the graphics card (site/socle.mp4)", run = film_run})
 	append(&list, toolbox.Command{name = "mockups", usage = "[names]  docs/mockups/*.html drawn to PNG by a headless Chromium", run = mockups_run})
 	return list[:]

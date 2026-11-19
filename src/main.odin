@@ -1,12 +1,15 @@
-// socle: your whole system in one window. src/md/README.md says how it is built. This version is the window on a demo
-// system (demo.odin): the pages, the draft and its review, the try and the keep, the history; it drives no Nix yet.
-//   socle                     the window
-//   socle --page=apps         a page first (overview, apps, desktop, history, templates, settings)
-//   socle --headless          no window of the system (a picture, a film: socletool film)
+// socle: your whole system in one window. src/md/README.md says how it is built.
+//   socle                     the window on this machine's configuration (/etc/socle)
+//   socle --folder=<path>     the window on another folder that socle manages
+//   socle --demo              the window on the demo system (tests/demo): the pictures and the film
+//   socle --page=apps         a page first (overview, apps, desktop, people, history, templates, updates, settings, ...)
+//   socle --headless          no window of the system (a picture, a film)
+//   socle helper <verb> ...   the root part, run by pkexec (helper.odin)
 package socle
 
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
 import host "gt:host"
@@ -19,13 +22,9 @@ APP_TITLE :: "Socle"
 
 WINDOW_SIZE :: [2]int{1280, 800}
 
-Page :: enum { Overview, Apps, People, Desktop, Hardware, Sound, Network, Printing, Gaming, Sharing, Power, Updates, History, Templates, All_Settings }
-
-PAGE_NAMES := [Page]string{
-	.Overview = "overview", .Apps = "apps", .People = "people", .Desktop = "desktop", .Hardware = "hardware",
-	.Sound = "sound", .Network = "network", .Printing = "printing", .Gaming = "gaming", .Sharing = "sharing",
-	.Power = "power", .Updates = "updates", .History = "history", .Templates = "templates", .All_Settings = "settings",
-}
+// The pages of the sidebar: socle's own, then the features' pages that the evaluation lists (generic: made from their
+// options' declarations).
+Page :: enum { Overview, Apps, People, Desktop, Feature, Updates, History, Templates, All_Settings }
 
 App :: struct {
 	shared:    host.Shared,
@@ -36,20 +35,47 @@ App :: struct {
 	shown:     ui.Theme_Shown,
 	announcer: ui.Announcer,
 
-	page:      Page,
-	version:   int,
-	draft:     Settings,
-	applied:   Settings,
-	changes:   [dynamic]Change,
-	apply:     Apply,
-	history:   [dynamic]Version,
+	// where the system comes from (source.odin)
+	source:      Source,
+	folder:      string,
+	host:        string,
+	load:        Load_State,
+	load_error:  string,
+	loading:     bool,
+	info:        ^Info,
+	draft:       Layer,
+	committed:   Layer,
+	changes:     [dynamic]Change,
+	lock_now:    map[string]i64,
+	lock_committed: map[string]i64,
+	generations: [dynamic]Generation,
+	apply:       Apply,
+	eval_due_ms: f64,
+	evaluating:  bool,
+	eval_error:  string,
+	updating:    bool,
 
 	// the pages' own state
-	audience:  int,            // Apps: for everyone, or a person
-	search:    ui.Line_Edit,   // Apps: the search
-	option:    int,            // All settings: the option shown
+	page:        Page,
+	feature:     string,         // the feature page shown (its id in socle.ui.pages)
+	audience:    int,            // Apps: for everyone, or a person
+	search:      ui.Line_Edit,   // Apps: the search
+	category:    string,         // Apps: the category shown ("": all)
+	option:      string,         // All settings: the option shown
 	options_search: ui.Line_Edit,
+	new_person:  ui.Line_Edit,   // People: a login to add
+	setup_ref:   int,            // Setup: the template chosen
+	setup_sure:  bool,
+
+	// the two big lists (search.odin)
+	catalogue:     Index,
+	options_index: Index,
+	option_values: map[string]string,   // an option's value, evaluated when it was first shown
+	option_asked:  map[string]bool,
 }
+
+// The window, for the posts of the workers (one window per process).
+the_app: ^App
 
 Open_Options :: struct {
 	args:     []string,
@@ -71,12 +97,18 @@ open :: proc(o: Open_Options) -> ^App {
 	headless := o.headless
 	size := WINDOW_SIZE
 	app.choice = {name = "Socle", mode = .Dark, finish = .Machined, glow = 1}
+	app.source, app.folder = .Folder, strings.clone(DEFAULT_FOLDER)
+	page := ""
 	for a in o.args {
 		switch {
 		case a == "--headless": headless = true
 		case a == "--light": app.choice.mode = .Light
-		case strings.has_prefix(a, "--page="):
-			for name, p in PAGE_NAMES { if name == a[len("--page="):] { app.page = p } }
+		case a == "--demo": app.source = .Demo
+		case strings.has_prefix(a, "--folder="):
+			delete(app.folder)
+			abs, err := filepath.abs(a[len("--folder="):], context.allocator)
+			app.folder = err == nil ? abs : strings.clone(a[len("--folder="):])
+		case strings.has_prefix(a, "--page="): page = a[len("--page="):]
 		case strings.has_prefix(a, "--size="):
 			v := a[len("--size="):]
 			if x := strings.index_byte(v, 'x'); x > 0 {
@@ -90,6 +122,7 @@ open :: proc(o: Open_Options) -> ^App {
 		free(app)
 		return nil
 	}
+	the_app = app
 	h := &app.main
 	h.state.icon_font = ui.lucide_icons()
 	ui.set_animations(&h.state, .On)
@@ -101,28 +134,60 @@ open :: proc(o: Open_Options) -> ^App {
 	append(&app.themes, ..ui.THEMES[:])
 	append(&app.themes, ..app.users[:])
 	app.announcer = {mode = .Window, window = h.win}
-
-	app.version = FIRST_VERSION
-	app.applied = demo_settings()
-	app.history = demo_history()
-	draft_set(app, app.applied)
+	app.lock_now = make(map[string]i64)
+	app.lock_committed = make(map[string]i64)
 	views_register_all(app)
+	load_start(app)
+	page_open(app, page)
 	return app
 }
 
+// A page by its name on the command line.
+page_open :: proc(app: ^App, name: string) {
+	switch name {
+	case "", "overview": app.page = .Overview
+	case "apps":         app.page = .Apps
+	case "people":       app.page = .People
+	case "desktop":      app.page = .Desktop
+	case "updates":      app.page = .Updates
+	case "history":      app.page = .History
+	case "templates":    app.page = .Templates
+	case "settings":     app.page = .All_Settings
+	case:
+		app.page = .Feature
+		delete(app.feature)
+		app.feature = strings.clone(name)
+	}
+}
+
 close :: proc(app: ^App) {
+	ui.chores_stop()
 	host.host_close(&app.main)
-	for c in app.changes { delete(c.text) }
+	the_app = nil
+	for c in app.changes { delete(c.text); delete(c.page) }
 	delete(app.changes)
-	delete(app.history)
+	generations_destroy(&app.generations)
+	layer_destroy(&app.draft)
+	layer_destroy(&app.committed)
+	info_destroy(app.info)
 	ui.line_edit_destroy(&app.search)
 	ui.line_edit_destroy(&app.options_search)
+	ui.line_edit_destroy(&app.new_person)
+	index_destroy(&app.catalogue)
+	index_destroy(&app.options_index)
+	for k, v in app.option_values { delete(k); delete(v) }
+	delete(app.option_values)
+	for k in app.option_asked { delete(k) }
+	delete(app.option_asked)
 	delete(app.themes)
 	ui.themes_destroy(&app.users)
 	free(app)
 }
 
 frame :: proc(app: ^App) { host.host_frame(&app.main) }
+
+// What a worker's answer owes the window: frames that show it.
+host_settle :: proc(app: ^App) { host.host_settle(&app.main) }
 
 // Before each build: the theme (applied again only when what it reads changed), and what moves with the clock.
 @(private = "file")
@@ -132,11 +197,16 @@ params :: proc(h: ^host.Host, p: ^ui.Build_Params) {
 		platform.set_dark_title(h.win, !app.shown.light)
 		h.background = ui.theme_lookup(&app.shared.theme, {}, "background")
 	}
-	apply_step(app)
 }
 
 main :: proc() {
-	app := open({args = os.args[1:]})
+	args := os.args[1:]
+	if len(args) > 0 && args[0] == "helper" { os.exit(helper_main(args[1:])) }
+	if len(args) > 0 && (args[0] == "version" || args[0] == "--version") {
+		fmt.println(APP_NAME, APP_VERSION)
+		return
+	}
+	app := open({args = args})
 	if app == nil { fmt.eprintln("socle: no window could be opened"); os.exit(1) }
 	defer close(app)
 	if !platform.is_offscreen(app.main.win) { platform.show_window(app.main.win) }

@@ -6,3 +6,4 @@ result
 *.pdb
 .pre-commit-config.yaml
 tmp/
+socle-vm.qcow2

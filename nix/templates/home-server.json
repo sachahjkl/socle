@@ -1,0 +1,13 @@
+{
+  "socle": 1,
+  "values": {
+    "socle": {
+      "desktop": {"environment": "none"}
+    },
+    "services": {
+      "openssh": {"enable": true},
+      "jellyfin": {"enable": true, "openFirewall": true},
+      "avahi": {"enable": true}
+    }
+  }
+}

@@ -2,35 +2,22 @@
 
 ## Now
 
-- **The managed configuration.** socle's Nix library reads the layers and the flake that socle writes, and the result
-  builds with plain `nixos-rebuild`, without socle. [The configuration](src/md/data/configuration.md).
-- **The overview.** A window that shows the running system: its generation, its template, its pending changes, the
-  state of its updates. [The window](src/md/features/window.md).
-- **Apply and go back.** The draft, the review of what changes, the build with its progress, the switch through the
-  helper, the history of the generations and a return to any of them. [Apply](src/md/features/apply.md),
-  [the helper](src/md/infrastructure/helper.md).
+- **Every package in the Apps page.** The page shows the popular apps of the locked Nixpkgs; the search covers every
+  package through the channel's index of that revision, kept per revision. [Apps](src/md/features/apps.md).
+- **Every option in All settings.** The page shows the options of the pages; the search covers every option of the
+  system through its options' index, built once per lock. [All settings](src/md/features/all-settings.md).
 
 ## Next
-
-- **Apps.** Search the packages of the pinned Nixpkgs, add and remove them, for the whole system or for one person.
-  [Apps](src/md/features/apps.md).
-- **The pages of settings.** Desktop, users, network, sound, printing, gaming, sharing: each page is a form made from
-  the options of a feature. [Features](src/md/features/features.md).
-- **All settings.** Search every NixOS option of the system, see its value and the layer that sets it, change it.
-  [All settings](src/md/features/all-settings.md).
-- **Templates.** Start from a ready-made system, follow its updates, replace any of its choices.
-  [Templates](src/md/data/templates.md).
-- **Updates.** Move Nixpkgs, socle's library and the templates forward, with the same review as any change.
-- **The base.** Determinate Nix, nh and nix-output-monitor in every system that socle installs, each one a setting.
-  [Images and base](src/md/features/images.md).
-- **A home on any system.** A person's apps, shell and settings through Home Manager, on any Linux with Nix or on
-  macOS; socle installs Nix if it is missing. [Targets](src/md/data/targets.md).
-
-## Later
 
 - **The installer and socle's images.** Live images that boot into socle's installer: the disk, the first person,
   the template, the install, the first start. [The installer](src/md/features/installer.md),
   [images](src/md/features/images.md).
+- **A home on any system.** A person's apps, shell and settings through Home Manager, on any Linux with Nix or on
+  macOS; socle installs Nix if it is missing. [Targets](src/md/data/targets.md).
+- **Free space.** The history's button removes the old versions beyond the kept count (`socle helper collect`).
+
+## Later
+
 - **Your own template.** Turn the current system into a template, extend another one, export it as a git repository
   that anyone can start from. [Templates](src/md/data/templates.md).
 - **Several machines.** One configuration for several hosts, and a deployment to another machine over SSH.

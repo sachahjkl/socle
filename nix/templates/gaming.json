@@ -1,0 +1,11 @@
+{
+  "socle": 1,
+  "values": {
+    "socle": {
+      "desktop": {"environment": "plasma"},
+      "packages": {"steam": true, "prismlauncher": true},
+      "unfree": {"steam": true}
+    },
+    "hardware": {"steam-hardware": {"enable": true}}
+  }
+}
