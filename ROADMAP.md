@@ -2,19 +2,14 @@
 
 ## Now
 
-- **Every package in the Apps page.** The page shows the popular apps of the locked Nixpkgs; the search covers every
-  package through the channel's index of that revision, kept per revision. [Apps](src/md/features/apps.md).
-- **Every option in All settings.** The page shows the options of the pages; the search covers every option of the
-  system through its options' index, built once per lock. [All settings](src/md/features/all-settings.md).
-
-## Next
-
 - **The installer and socle's images.** Live images that boot into socle's installer: the disk, the first person,
   the template, the install, the first start. [The installer](src/md/features/installer.md),
   [images](src/md/features/images.md).
+
+## Next
+
 - **A home on any system.** A person's apps, shell and settings through Home Manager, on any Linux with Nix or on
   macOS; socle installs Nix if it is missing. [Targets](src/md/data/targets.md).
-- **Free space.** The history's button removes the old versions beyond the kept count (`socle helper collect`).
 
 ## Later
 

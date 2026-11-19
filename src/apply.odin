@@ -26,6 +26,23 @@ Stage :: enum {
 	Starting,    // the helper activates it (pkexec asks for a password)
 	Trying,      // it runs on trial: keep, go back, or the timer goes back
 	Finishing,   // keep, go back or at the next start: the helper and the commit
+	Freeing,     // the old versions removed and the store collected (the helper's collect)
+}
+
+// The versions that Free space keeps: the newest ones (apply.md, "The history").
+KEEP_VERSIONS :: 10
+
+// Free space: the versions beyond the newest KEEP_VERSIONS removed, then the store's garbage collected.
+apply_free_space :: proc(app: ^App) {
+	if apply_busy(app) || len(app.generations) <= KEEP_VERSIONS { return }
+	if app.source == .Demo {
+		// (the demo has no store: its history only gets shorter)
+		resize(&app.generations, KEEP_VERSIONS)
+		ui.announce(&app.announcer, .Info, "Space freed", fmt.tprintf("The newest %d versions stay.", KEEP_VERSIONS))
+		return
+	}
+	app.apply.stage = .Freeing
+	helper_start(app, {"collect", fmt.tprintf("%d", KEEP_VERSIONS)})
 }
 
 Apply :: struct {
@@ -94,7 +111,7 @@ summary_of :: proc(app: ^App) -> string {
 // What moves with the clock: the demo's preparing, the countdown of a try. Called before each build.
 apply_step :: proc(app: ^App) {
 	switch app.apply.stage {
-	case .Idle, .Starting, .Finishing:
+	case .Idle, .Starting, .Finishing, .Freeing:
 	case .Preparing:
 		ui.keep_animating()
 		if app.source == .Demo && apply_fraction(app) >= 1 { apply_built(app, "/nix/store/demo-system") }
@@ -343,6 +360,7 @@ Helper_Call :: struct {
 	app:  ^App,
 	args: []string,
 	why:  string,
+	said: string,   // the helper's last line of output: collect says the space it freed
 }
 
 // The installed socle (pkexec's rule names its path), else this program.
@@ -369,6 +387,9 @@ helper_work :: proc(data: rawptr) {
 	r := run(command[:])
 	switch {
 	case r.ok:
+		out := strings.trim_space(r.stdout)
+		if i := strings.last_index_byte(out, '\n'); i >= 0 { out = out[i + 1:] }
+		h.said = strings.clone(out)
 	case r.code == 126 || r.code == 127:
 		h.why = strings.clone("An administrator's password is needed to change the system.")
 	case:
@@ -397,10 +418,16 @@ helper_done :: proc(data: rawptr, _: u64) {
 	case "init":
 		if h.why != "" { ui.announce(&app.announcer, .Bad, "socle could not take over this machine", h.why, stays = true) }
 		load_start(app)
+	case "collect":
+		app.apply.stage = .Idle
+		if h.why != "" { ui.announce(&app.announcer, .Bad, "Space could not be freed", h.why, stays = true) }
+		else { ui.announce(&app.announcer, .Info, "Space freed", h.said != "" ? h.said : fmt.tprintf("The newest %d versions stay.", KEEP_VERSIONS)) }
+		load_start(app)
 	}
 	for a in h.args { delete(a) }
 	delete(h.args)
 	delete(h.why)
+	delete(h.said)
 	free(h)
 }
 

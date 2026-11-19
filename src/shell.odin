@@ -211,6 +211,9 @@ changes_bar :: proc(app: ^App, em: f32) {
 		case .Trying, .Finishing:
 			ui.button("###changes_busy", "On trial", o = {face = .Ghost, busy = true})
 			ui.spacer(ui.fill())
+		case .Freeing:
+			ui.button("###changes_busy", "Freeing space", o = {face = .Ghost, busy = true})
+			ui.spacer(ui.fill())
 		case .Idle:
 			if app.eval_error != "" {
 				ui.dot("###changes_dot", em * 0.55, .Danger)

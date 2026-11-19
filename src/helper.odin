@@ -16,6 +16,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import "core:strconv"
 import "core:strings"
 import "core:time"
 
@@ -159,10 +160,19 @@ helper_boot :: proc(path: string) -> int {
 
 @(private = "file")
 helper_collect :: proc(count: string) -> int {
+	// (a number of versions, at least one: nix-env reads "+<n>", and 0 would remove the running one's entry)
+	n, nok := strconv.parse_int(count, 10)
+	if !nok || n < 1 { return helper_fail(fmt.tprintf("%s is not a count of versions", count)) }
 	r := run({SW + "nix-env", "--profile", SYSTEM_PROFILE, "--delete-generations", fmt.tprintf("+%s", count)}, allocator = context.temp_allocator)
 	if !r.ok { return helper_fail(r.stderr) }
 	g := run({SW + "nix-collect-garbage"}, allocator = context.temp_allocator)
-	return g.ok ? 0 : helper_fail(g.stderr)
+	if !g.ok { return helper_fail(g.stderr) }
+	// (nix's summary, "<n> store paths deleted, <size> freed": the window shows it)
+	for line in strings.split_lines(strings.concatenate({g.stdout, "\n", g.stderr}, context.temp_allocator), context.temp_allocator) {
+		// (a path named freedesktop is not the summary)
+		if t := strings.trim_space(line); strings.has_suffix(t, " freed") { fmt.println(t) }
+	}
+	return 0
 }
 
 // The flake of a folder that socle manages: its inputs and one call to socle's library (configuration.md).

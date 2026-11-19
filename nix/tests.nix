@@ -136,6 +136,12 @@ in {
       helper(f"try {before}")
       helper("revert")
       machine.succeed(f"test \"$(readlink -f /run/current-system)\" = {path}")
+
+      # free space: the newest version stays, the running one with it
+      machine.fail("socle helper collect 0")
+      helper("collect 1")
+      machine.succeed("test \"$(nix-env --list-generations -p /nix/var/nix/profiles/system | wc -l)\" = 1")
+      machine.succeed(f"test -e {path}")
     '';
   };
 }

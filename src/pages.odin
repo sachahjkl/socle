@@ -647,6 +647,14 @@ history_page :: proc(app: ^App, em: f32) {
 	page_head("History", "Each version stays until you free its space.", em)
 	ui.spacer(ui.px(em * 1.2))
 	if len(app.generations) == 0 { weak("This machine has no version of its system yet.", "history_none"); return }
+	// (only when there is something to remove: the newest KEEP_VERSIONS always stay)
+	if len(app.generations) > KEEP_VERSIONS {
+		// (the changes bar says "Freeing space": the button only turns busy)
+		if ui.button("free_space", fmt.tprintf("Free space: keep the newest %d", KEEP_VERSIONS), lucide.TRASH_2, {busy = app.apply.stage == .Freeing, disabled = apply_busy(app)}).clicked {
+			apply_free_space(app)
+		}
+		ui.spacer(ui.px(em * 0.8))
+	}
 	if ui.list_card("###versions") {
 		for g, i in app.generations {
 			if ui.card_row(fmt.tprintf("###version%d", i)) {
