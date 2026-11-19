@@ -17,10 +17,12 @@ import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
+import "core:time"
 
 KEEP_SECONDS :: 60
 @(private = "file") STATE_DIR  :: "/run/socle"
 @(private = "file") STATE_FILE :: "/run/socle/state.json"
+@(private = "file") LOCK_FILE  :: "/run/socle/lock"
 @(private = "file") SYSTEM_PROFILE :: "/nix/var/nix/profiles/system"
 @(private = "file") SW :: "/run/current-system/sw/bin/"
 @(private = "file") REVERT_UNIT :: "socle-revert"
@@ -28,6 +30,9 @@ KEEP_SECONDS :: 60
 // Runs a verb; the exit code of the process.
 helper_main :: proc(args: []string) -> int {
 	if len(args) == 0 { return helper_fail("socle helper: a verb is needed (try, keep, revert, boot, init, collect)") }
+	// (a verb waits for the one before to end: a try asked while the countdown goes back starts after it)
+	_ = os.make_directory_all(STATE_DIR)
+	if !helper_lock(LOCK_FILE) { return helper_fail(LOCK_FILE + " cannot be locked") }
 	switch args[0] {
 	case "try":     return len(args) == 2 ? helper_try(args[1]) : helper_fail("socle helper try <store path>")
 	case "keep":    return helper_keep()
@@ -62,14 +67,16 @@ system_ok :: proc(path: string) -> string {
 // manager and end the session that started it.
 @(private = "file")
 activate :: proc(path, action: string) -> bool {
-	r := run({SW + "systemd-run", "--unit", "socle-activate", "--collect", "--wait", "--quiet", "--service-type=oneshot",
+	// (a name of its own each time: a switch back, run from the countdown's service, can find the last one still loaded)
+	unit := fmt.tprintf("socle-activate-%d", time.to_unix_nanoseconds(time.now()))
+	r := run({SW + "systemd-run", "--unit", unit, "--collect", "--wait", "--quiet", "--service-type=oneshot",
 		"--property=KillMode=process", join(path, "bin", "switch-to-configuration"), action}, allocator = context.temp_allocator)
 	if !r.ok { fmt.eprint(r.stderr) }
 	return r.ok
 }
 
 @(private = "file")
-State :: struct { tried, previous: string }
+State :: struct { tried, previous, timer: string }
 
 @(private = "file")
 state_write :: proc(s: State) {
@@ -86,21 +93,30 @@ state_read :: proc() -> (s: State, ok: bool) {
 	return
 }
 
+// The countdown stopped: its timer only. (its service is the revert that the timer runs: stopping it would end the
+// helper that called this, before it goes back)
 @(private = "file")
-timer_stop :: proc() {
-	_ = run({SW + "systemctl", "stop", REVERT_UNIT + ".timer", REVERT_UNIT + ".service"}, allocator = context.temp_allocator)
+timer_stop :: proc(name: string) {
+	if name == "" { return }
+	_ = run({SW + "systemctl", "stop", fmt.tprintf("%s.timer", name)}, allocator = context.temp_allocator)
 }
 
 @(private = "file")
 helper_try :: proc(path: string) -> int {
 	if why := system_ok(path); why != "" { return helper_fail(why) }
 	if _, busy := state_read(); busy { return helper_fail("a version is on trial already: keep it or go back first") }
+	// (a virtual machine started from its kernel has no system profile yet: the version before is the running one)
 	previous := link_target(SYSTEM_PROFILE)
-	if previous == "" { return helper_fail("the system profile cannot be read") }
-	state_write({tried = path, previous = previous})
+	if previous == "" { previous = link_target("/run/current-system") }
+	if previous == "" { return helper_fail("neither the system profile nor the running system can be read") }
+	// (a try with no way back is no try)
+	if !os.exists(join(previous, "bin", "switch-to-configuration")) { return helper_fail(fmt.tprintf("%s cannot be switched back to: no try without a way back", previous)) }
+	// (a name of its own each time: the unit of the last countdown may still be loaded)
+	timer := fmt.tprintf("%s-%d", REVERT_UNIT, time.time_to_unix(time.now()))
+	state_write({tried = path, previous = previous, timer = timer})
 	// (the timer first: an activation that hangs or ends the session still goes back)
 	self := link_target("/proc/self/exe")
-	r := run({SW + "systemd-run", "--unit", REVERT_UNIT, "--collect", "--quiet", fmt.tprintf("--on-active=%d", KEEP_SECONDS),
+	r := run({SW + "systemd-run", "--unit", timer, "--collect", "--quiet", fmt.tprintf("--on-active=%d", KEEP_SECONDS),
 		"--timer-property=AccuracySec=1s", self, "helper", "revert"}, allocator = context.temp_allocator)
 	if !r.ok { os.remove(STATE_FILE); return helper_fail(fmt.tprintf("the countdown could not start: %s", r.stderr)) }
 	if !activate(path, "test") {
@@ -114,7 +130,7 @@ helper_try :: proc(path: string) -> int {
 helper_keep :: proc() -> int {
 	s, ok := state_read()
 	if !ok { return helper_fail("no version is on trial") }
-	timer_stop()
+	timer_stop(s.timer)
 	r := run({SW + "nix-env", "--profile", SYSTEM_PROFILE, "--set", s.tried}, allocator = context.temp_allocator)
 	if !r.ok { return helper_fail(r.stderr) }
 	if !activate(s.tried, "boot") { return helper_fail("the boot entry could not be written") }
@@ -125,8 +141,8 @@ helper_keep :: proc() -> int {
 @(private = "file")
 helper_revert :: proc() -> int {
 	s, ok := state_read()
-	timer_stop()
 	if !ok { return 0 }   // (kept already, or gone back by the timer)
+	timer_stop(s.timer)
 	os.remove(STATE_FILE)
 	if !activate(s.previous, "test") { return helper_fail("the previous version did not start again") }
 	return 0

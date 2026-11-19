@@ -36,7 +36,13 @@ absolute path under `/run/current-system/sw/bin`: pkexec gives a minimal `PATH`.
 - `try` starts the countdown first: a transient timer of systemd (`socle-revert.timer`, `KEEP_SECONDS` after now)
   that runs `socle helper revert`. If the activation hangs, ends the session, or the window and the helper die, the
   timer still goes back.
-- The activation runs in a transient unit (`socle-activate`): a new display manager may end the session that asked.
+- The activation runs in a transient unit (`socle-activate-<time>`): a new display manager may end the session that
+  asked. Each activation and each countdown (`socle-revert-<time>`) gets a new unit name: a unit of the same name can
+  still be loaded, and systemd then refuses the new one.
+- One verb runs at a time: each takes a `flock` on `/run/socle/lock` and waits for it. `/run/current-system` changes
+  in the middle of an activation, so a try asked just after the countdown went back can start while that switch
+  still runs, and `switch-to-configuration` refuses a second switch. The kernel releases the lock when a helper
+  ends, so a crashed helper does not block the next one.
 - The state is `/run/socle/state.json` (`tried`, `previous`): `keep` and `revert` read it, and remove it. In `/run`,
   it does not survive a restart, and neither does a try: the default is still the previous version.
 

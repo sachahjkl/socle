@@ -84,6 +84,8 @@ in {
       nix.settings.substituters = lib.mkForce [];
       # (the framework names its machine; the folder's systems keep their own name)
       networking.hostName = lib.mkForce "machine";
+      # (a test's machine cannot switch unless asked: the try goes back to it)
+      system.switch.enable = true;
     };
     testScript = ''
       machine.wait_for_unit("multi-user.target")
@@ -103,24 +105,35 @@ in {
       ).strip()
       assert path == "${changed}", f"the folder built {path}, not the host's ${changed}"
 
+      # the helper's words when it refuses: the test's log shows them
+      def helper(verb):
+          rc, out = machine.execute(f"socle helper {verb} 2>&1")
+          print(out)
+          assert rc == 0, f"socle helper {verb}: {out}"
+
       # a try that nobody keeps: the timer goes back by itself
-      machine.succeed(f"socle helper try {path}")
+      helper(f"try {path}")
       machine.succeed("test \"$(readlink -f /run/current-system)\" = " + path)
       machine.succeed("command -v hello")
-      machine.wait_until_succeeds(f"test \"$(readlink -f /run/current-system)\" = {before}", timeout=180)
+      try:
+          machine.wait_until_succeeds(f"test \"$(readlink -f /run/current-system)\" = {before}", timeout=180)
+      except Exception:
+          print(machine.execute("systemctl list-timers --all 2>&1; journalctl -u 'socle-revert*' -u 'socle-activate*' --no-pager 2>&1 | tail -60")[1])
+          raise
       machine.fail("test -e /run/socle/state.json")
-      machine.succeed(f"test \"$(readlink -f /nix/var/nix/profiles/system)\" = {before}")
+      # (the try never became the default; a test's machine may have no profile at all)
+      machine.fail(f"test \"$(readlink -f /nix/var/nix/profiles/system)\" = {path}")
 
       # a try that is kept: the default from now on
-      machine.succeed(f"socle helper try {path}")
-      machine.succeed("socle helper keep")
+      helper(f"try {path}")
+      helper("keep")
       machine.succeed(f"test \"$(readlink -f /nix/var/nix/profiles/system)\" = {path}")
       machine.succeed(f"test \"$(readlink -f /run/current-system)\" = {path}")
-      machine.fail("systemctl is-active socle-revert.timer")
+      machine.fail("systemctl list-timers --no-legend | grep -q socle-revert")
 
       # a try then a revert by hand
-      machine.succeed(f"socle helper try {before}")
-      machine.succeed("socle helper revert")
+      helper(f"try {before}")
+      helper("revert")
       machine.succeed(f"test \"$(readlink -f /run/current-system)\" = {path}")
     '';
   };

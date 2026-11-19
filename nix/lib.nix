@@ -121,7 +121,13 @@
       hostLayer = readJSON hostFile;
       hardware = root + "/hosts/${name}";
       # (the hash of the layers that made the system: the history joins versions and commits by it, apply.md)
-      revision = hashString "sha256" (readText systemFile + readText hostFile);
+      # (a system layer given is hashed as its JSON: the text a folder written from it holds)
+      revision = hashString "sha256" ((
+          if system != null
+          then builtins.toJSON system
+          else readText systemFile
+        )
+        + readText hostFile);
     in
       [
         socle.nixosModules.socle
