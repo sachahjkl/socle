@@ -28,20 +28,27 @@ Stage :: enum {
 	Freeing,     // the old versions removed and the store collected (the helper's collect)
 }
 
-// The versions that Free space keeps: the newest ones (apply.md, "The history").
-KEEP_VERSIONS :: 10
+// The versions that Free space keeps, the newest ones: the base's setting, which nh's weekly clean keeps too
+// (apply.md, "The history"), as the applied system has it.
+keep_versions :: proc(app: ^App) -> int {
+	if app.info != nil {
+		if n := int(num(at(app.info.effective, {"base", "keepVersions"}))); n >= 1 { return n }
+	}
+	return 10
+}
 
-// Free space: the versions beyond the newest KEEP_VERSIONS removed, then the store's garbage collected.
+// Free space: the versions beyond the newest keep_versions removed, then the store's garbage collected.
 apply_free_space :: proc(app: ^App) {
-	if apply_busy(app) || len(app.generations) <= KEEP_VERSIONS { return }
+	keep := keep_versions(app)
+	if apply_busy(app) || len(app.generations) <= keep { return }
 	if app.source == .Demo {
 		// (the demo has no store: its history only gets shorter)
-		resize(&app.generations, KEEP_VERSIONS)
-		ui.announce(&app.announcer, .Info, "Space freed", fmt.tprintf("The newest %d versions stay.", KEEP_VERSIONS))
+		resize(&app.generations, keep)
+		ui.announce(&app.announcer, .Info, "Space freed", fmt.tprintf("The newest %d versions stay.", keep))
 		return
 	}
 	app.apply.stage = .Freeing
-	helper_start(app, {"collect", fmt.tprintf("%d", KEEP_VERSIONS)})
+	helper_start(app, {"collect", fmt.tprintf("%d", keep)})
 }
 
 Apply :: struct {
@@ -349,7 +356,7 @@ helper_done :: proc(data: rawptr, _: u64) {
 	case "collect":
 		app.apply.stage = .Idle
 		if h.why != "" { ui.announce(&app.announcer, .Bad, "Space could not be freed", h.why, stays = true) }
-		else { ui.announce(&app.announcer, .Info, "Space freed", h.said != "" ? h.said : fmt.tprintf("The newest %d versions stay.", KEEP_VERSIONS)) }
+		else { ui.announce(&app.announcer, .Info, "Space freed", h.said != "" ? h.said : fmt.tprintf("The newest %d versions stay.", keep_versions(app))) }
 		load_start(app)
 	}
 	for a in h.args { delete(a) }

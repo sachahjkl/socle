@@ -43,9 +43,10 @@ so a crash of the session also goes back. ([../infrastructure/helper.md](../infr
 - "Go back to this version" runs the same try and keep with that generation's path; nothing is built.
 - After a return, the running system and the draft differ. The window says so once and offers "Use its settings": the
   layers of that commit become the draft.
-- "Free space" removes the generations beyond the newest ten, then collects the store's garbage
-  (`socle helper collect 10`). The button shows only when there are more than ten. The window shows nix's summary
-  of the space freed. Ten is a constant (`KEEP_VERSIONS`), not a preference: no person asked for another count.
+- "Free space" removes the generations beyond the newest `socle.base.keepVersions` (ten unless set), then collects
+  the store's garbage (`socle helper collect <n>`). nh's weekly clean keeps the same count: one setting for both. The
+  count is the applied system's, not the draft's. The button shows only when there are more versions than that. The
+  window shows nix's summary of the space freed.
 
 ## Subtle points
 

@@ -298,6 +298,16 @@ in {
           "test \"$(stat -c %G /etc/socle)\" = wheel",
           "git -C /etc/socle log --format=%s | grep -qx 'Install from socle#minimal'",
       )
+
+      # a takeover of this machine: its boot loader found on its boot partition (systemd-boot: the base's, nothing
+      # written), its hardware read, its people kept
+      target.succeed(
+          "mv /etc/socle /root/installed && mkdir /etc/socle",
+          "socle helper init socle#minimal 2>&1",
+          "test -e /etc/socle/hosts/socle-test/hardware.nix",
+          "! grep -q grub /etc/socle/socle/hosts/socle-test.json",
+          "grep -q '\"ada\"' /etc/socle/socle/system.json",
+      )
     '';
   };
 }

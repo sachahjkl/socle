@@ -211,8 +211,11 @@ helper_init :: proc(template, source: string) -> int {
 	}
 	_ = os.write_entire_file(join(folder, "flake.nix"), fmt.tprintf(FLAKE_TEXT, NIXPKGS_URL, source != "" ? source : SOCLE_URL))
 	_ = os.write_entire_file(join(folder, "socle", "system.json"), fmt.tprintf("{{\n  \"socle\": 1,\n  \"template\": %q,\n  \"values\": {{\n    \"socle\": {{\"people\": {{%s}}}}\n  }}\n}}\n", template, people_json()))
-	_ = os.write_entire_file(join(folder, "socle", "hosts", fmt.tprintf("%s.json", host)),
-		fmt.tprintf("{{\n  \"socle\": 1,\n  \"values\": {{\n    \"system\": {{\"stateVersion\": %q}}\n  }}\n}}\n", release_now()))
+	machine := layer_parse("")
+	defer layer_destroy(&machine)
+	layer_set(&machine, {"system", "stateVersion"}, json.String(strings.clone(release_now())))
+	if why := boot_loader_found(&machine); why != "" { return helper_fail(why) }
+	_ = os.write_entire_file(join(folder, "socle", "hosts", fmt.tprintf("%s.json", host)), layer_text(machine, context.temp_allocator))
 	hardware := run({SW + "nixos-generate-config", "--show-hardware-config"}, allocator = context.temp_allocator)
 	if !hardware.ok { return helper_fail(fmt.tprintf("the hardware cannot be read: %s", hardware.stderr)) }
 	_ = os.write_entire_file(join(hw, "hardware.nix"), hardware.stdout)
@@ -229,6 +232,45 @@ helper_init :: proc(template, source: string) -> int {
 	_ = run({SW + "chgrp", "-R", "wheel", folder}, allocator = context.temp_allocator)
 	_ = run({SW + "chmod", "-R", "g+rwX", folder}, allocator = context.temp_allocator)
 	return 0
+}
+
+// The boot loader this machine starts with, in its layer: socle's base starts with systemd-boot, and a machine that
+// starts with GRUB must keep it, on its own disk. Found from what is on the boot partition, never from the Nix that a
+// person wrote. "" or why it cannot be known.
+@(private = "file")
+boot_loader_found :: proc(machine: ^Layer) -> string {
+	uefi := os.exists("/sys/firmware/efi")
+	// (the EFI partition where it is mounted: /boot, or /boot/efi on older machines)
+	esp := ""
+	for at in ([]string{"/boot", "/boot/efi", "/efi"}) {
+		r := run({SW + "findmnt", "-no", "FSTYPE", at}, allocator = context.temp_allocator)
+		if r.ok && strings.trim_space(r.stdout) == "vfat" { esp = at; break }
+	}
+	if esp != "" && esp != "/boot" {
+		layer_set(machine, {"boot", "loader", "efi", "efiSysMountPoint"}, json.String(strings.clone(esp)))
+	}
+	switch {
+	case os.exists("/boot/loader/loader.conf") || (esp != "" && os.exists(join(esp, "loader", "loader.conf"))):
+		return ""   // (systemd-boot: the base's)
+	// (NixOS keeps GRUB's configuration on /boot, with UEFI or without)
+	case os.exists("/boot/grub/grub.cfg"):
+		layer_set(machine, {"boot", "loader", "systemd-boot", "enable"}, json.Boolean(false))
+		layer_set(machine, {"boot", "loader", "grub", "enable"}, json.Boolean(true))
+		if uefi {
+			layer_set(machine, {"boot", "loader", "grub", "efiSupport"}, json.Boolean(true))
+			layer_set(machine, {"boot", "loader", "grub", "device"}, json.String(strings.clone("nodev")))
+			return ""
+		}
+		// (BIOS: GRUB goes on the disk that holds /boot, else /)
+		source := run({SW + "findmnt", "-no", "SOURCE", "/boot"}, allocator = context.temp_allocator)
+		if !source.ok { source = run({SW + "findmnt", "-no", "SOURCE", "/"}, allocator = context.temp_allocator) }
+		disk := run({SW + "lsblk", "-no", "PKNAME", strings.trim_space(source.stdout)}, allocator = context.temp_allocator)
+		name := strings.trim_space(disk.stdout)
+		if !disk.ok || name == "" { return "the disk that GRUB starts from cannot be found" }
+		layer_set(machine, {"boot", "loader", "grub", "device"}, json.String(fmt.aprintf("/dev/%s", name)))
+		return ""
+	}
+	return "socle does not know this machine's boot loader: neither systemd-boot nor GRUB is on its boot partition"
 }
 
 // The people of this machine (the accounts of /etc/passwd from 1000 up), as the system layer's: an administrator is in

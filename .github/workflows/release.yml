@@ -1,0 +1,66 @@
+name: Release
+
+# A version's tag (socletool ship): socle's live images built from it (nix/images.nix) and published as the version's
+# GitHub release, with their checksums and the changelog's section as its notes. The program itself is the flake's
+# package: a person runs it with nix, the images carry it.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The version's tag (v0.3.0)"
+        required: true
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  images:
+    name: Live images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      # (a desktop's closure and its squashed image: the runner's tools leave too little room)
+      - name: Room for the images
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/share/boost
+          df -h /
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          submodules: recursive
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+      - name: Images
+        run: |
+          mkdir dist
+          for image in desktop minimal; do
+            nix build ".#iso-$image" -o "result-$image"
+            cp result-$image/iso/*.iso dist/
+          done
+          (cd dist && sha256sum *.iso > SHA256SUMS)
+          ls -la dist
+      - name: Notes
+        run: |
+          nix develop --command sh -c '
+            set -e
+            mkdir -p build
+            odin build tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool
+            build/socletool notes "${TAG#v}" > notes.md
+          '
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" --title "socle ${TAG#v}" --notes-file notes.md dist/*
+          fi

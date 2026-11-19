@@ -37,6 +37,11 @@ nix run github:sachahjkl/socle -- --demo   # the window on the demo system: noth
 On a NixOS of your own, `socle` offers to take the machine over from a template: it writes `/etc/socle` with your
 hardware and your people, and nothing changes until you apply. From then on, the system comes from socle's folder.
 
+To install a computer, start it from one of socle's images, from the
+[releases](https://github.com/sachahjkl/socle/releases): the Desktop image opens the installer, the Minimal image
+gives a console. The installer erases one whole disk, encrypted or not, and needs UEFI and the network. From any NixOS
+live image, `nix run github:sachahjkl/socle -- install` opens the same installer.
+
 [ROADMAP.md](ROADMAP.md) gives the plan, [src/md](src/md/README.md) the design.
 
 ## Build

@@ -27,11 +27,22 @@ odin run tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool
 | `logo` | `assets/logo*.png`, `assets/socle.ico` and `.project/image.png`, drawn by the toolkit's paint package |
 | `mockups [names]` | `docs/mockups/*.html` drawn to PNG at 1280 × 800 by a headless Chromium |
 | `build [release]`, `test`, `check` | the program `build/socle` (the toolkit's native library first), its tests, every check (gui_toolkit's `toolbox.build_commands`) |
-| `film [out.mp4]` | the presentation film: `tools/socle_film` drives socle's window headless on the graphics card (gt:film), ffmpeg encodes it (NVENC when there is one): `site/socle.mp4` |
+| `film [out.mp4]` | the presentation film: `tools/socle_film` drives socle's window headless on the graphics card (gt:film), ffmpeg encodes it (NVENC when there is one): `site/socle.mp4`. `--install`: the installer on the demo; `--folder=<path>`: a check of a real folder |
 | `site build <site> <out>`, `check`, `card` | the site's pages (gt:site), published by `.github/workflows/pages.yml` |
 
 `build`, `test` and `check` come from gui_toolkit (`toolbox.build_commands`) with the first code of the program.
 `GT=<folder>` builds against another checkout of gui_toolkit.
+
+## The tests in virtual machines
+
+Opt-in: each boots a NixOS and takes minutes. They need KVM. None touches the machine that runs them.
+
+```sh
+nix build .#tests.switch    # a try that goes back by itself, a keep, a revert, Free space
+nix build .#tests.install   # a folder installed on an empty disk, the disk started, then a takeover of it
+nix build .#tests.image     # the Desktop ISO started on UEFI: the installer's window in sway
+nix build .#iso-desktop .#iso-minimal   # the live images, as a release publishes them
+```
 
 ## A change
 

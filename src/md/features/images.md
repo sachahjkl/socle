@@ -5,13 +5,32 @@ system installed by socle starts from.
 
 ## The images
 
-socle's flake builds live images (`nixosConfigurations.image-*`, an ISO each):
+socle's flake builds live images (`nix/images.nix`, `nix build .#iso-desktop` and `.#iso-minimal`), on NixOS's own
+live image:
 
-- **Desktop**: a graphical session that opens socle's installer at start ([installer.md](installer.md)).
-- **Minimal**: a console, with `socle install` in the terminal for servers and remote installs over SSH.
+- **Desktop**: greetd starts a kiosk session of sway, and sway opens `socle install` full screen
+  ([installer.md](installer.md)). When the window closes, the session ends and greetd opens it again.
+- **Minimal**: a console. Its login screen says how to run `socle install --disk=...`, for servers and installs over
+  SSH.
 
-Each image carries the same base as an installed system, so what a person tries on the live image is what they get.
-The CI builds the images at each release and publishes them beside the program.
+Each image carries socle's base (Determinate Nix, nh, nix-output-monitor) and what the installer runs (git, mkpasswd,
+nixos-facter), and NetworkManager for the Wi-Fi. bootvine is off on the images: they start from their own boot
+loader. The CI builds the images at each release and publishes them beside the program.
+
+### Choices
+
+- **sway, not cage.** The installer's keyboard choice changes the live session's keyboard at once (`swaymsg input`):
+  what a person types in the installer is what the installed machine reads. cage cannot change it.
+- **No password for the live user.** A polkit rule lets the user `nixos` run socle's helper without one, as sudo does
+  on every NixOS live image.
+- **Under 2 GiB each** (a release's file on GitHub): the kiosk has no speech service and no portal, and socle's
+  program does not keep its compiler's paths (the package removes them; `disallowedReferences` keeps them out).
+
+### Tests
+
+- `nix build .#tests.image` starts the Desktop ISO on UEFI, waits for socle's window in sway's tree, takes a
+  screenshot, and runs the helper as the live user.
+- `nix build .#tests.install` installs a folder on an empty disk and starts the result (installer.md).
 
 ## The base
 
