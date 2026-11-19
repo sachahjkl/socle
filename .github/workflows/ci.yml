@@ -1,8 +1,8 @@
 name: CI
 
-# Every push to master and every pull request: the flake's checks (the hooks), then socletool built with -vet and its
-# check of the changelog, in the flake's shell, as on a developer's machine. The program's own build and tests join
-# with its first code.
+# Every push to master and every pull request: the flake's checks (the hooks, the layers, the templates) and socle's
+# package, then socletool's check (the program built with -vet, the changelog, the roadmap) and the unit tests, in the
+# flake's shell, as on a developer's machine. The switch test boots a virtual machine: it stays opt-in.
 on:
   push:
     branches: [master]
@@ -27,13 +27,18 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v8
+      # (the outputs' shape without builds, then the checks and the package built by nix build: under lazy trees,
+      # `nix flake check` builds from sources that it never writes to the store, "path ... is not valid")
       - name: nix flake check
-        run: nix flake check
-      - name: socletool
+        run: nix flake check --no-build
+      - name: checks and package
+        run: nix build --no-link -L .#checks.x86_64-linux.pre-commit .#checks.x86_64-linux.layers .#checks.x86_64-linux.templates .#socle
+      - name: socletool and tests
         run: |
           nix develop --command sh -c '
             set -e
             mkdir -p build
             odin build tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool -vet -strict-style
-            build/socletool changelog check
+            build/socletool check
+            build/socletool test
           '
