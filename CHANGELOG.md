@@ -3,6 +3,11 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.4.0] - 2026-11-19 21:37
+
+### Added
+- **A home on any Linux with Nix**: socle manages your own apps, shell and tools through Home Manager, in ~/.config/socle, with the same pages, review and history as a system, and no administrator. On a system that is not NixOS it starts there; on NixOS, `socle --home` opens it. Two templates start one: A developer's terminal, and Just my apps.
+
 ## [0.3.0] - 2026-11-19 20:43
 
 ### Added
@@ -33,6 +38,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.4.0]: https://github.com/sachahjkl/socle/releases/tag/v0.4.0
 [0.3.0]: https://github.com/sachahjkl/socle/releases/tag/v0.3.0
 [0.2.0]: https://github.com/sachahjkl/socle/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sachahjkl/socle/releases/tag/v0.1.0
