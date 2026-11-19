@@ -6,6 +6,7 @@ import cli "gt:cli"
 import toolbox "gt:toolbox"
 
 DEMO_OUT :: "src/demo/info.json"
+DEMO_LAYER_OUT :: "src/demo/system.json"
 
 // `demo`: src/demo/info.json, the evaluation of tests/demo that the window shows with --demo (the pictures, the film,
 // the tests). An evaluation kept, so the demo needs no nix and gives the same pictures each time.
@@ -20,5 +21,9 @@ demo_run :: proc(args: []string) -> cli.Exit {
 	_ = os.make_directory_all("src/demo")
 	if os.write_entire_file(DEMO_OUT, out) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", DEMO_OUT)) }
 	fmt.printfln("wrote %s", DEMO_OUT)
+	// (its layer beside it: the program embeds both, and its package has no tests/ folder)
+	layer, rerr := os.read_entire_file_from_path("tests/demo/socle/system.json", context.temp_allocator)
+	if rerr != nil || os.write_entire_file(DEMO_LAYER_OUT, layer) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", DEMO_LAYER_OUT)) }
+	fmt.printfln("wrote %s", DEMO_LAYER_OUT)
 	return .Done
 }

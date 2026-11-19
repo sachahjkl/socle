@@ -229,6 +229,14 @@
     socleInfo = lib.genAttrs hosts infoFor;
     # (a NixOS test's machine is made of the same modules: nix/tests.nix)
     socleModules = lib.genAttrs hosts modulesFor;
+    # every option of a machine, as All settings searches them: built apart from the system's manual, which the base
+    # leaves out
+    socleOptions = lib.genAttrs hosts (name:
+      (systems.${name}.pkgs.nixosOptionsDoc {
+        inherit (systems.${name}) options;
+        warningsAreErrors = false;
+      })
+      .optionsJSON);
   };
 in {
   inherit configuration wrap priority chainOf;

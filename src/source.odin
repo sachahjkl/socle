@@ -20,7 +20,7 @@ import "core:time"
 import "gt:ui"
 
 DEMO_INFO   :: #load("demo/info.json", string)
-DEMO_LAYER  :: #load("../tests/demo/socle/system.json", string)
+DEMO_LAYER  :: #load("demo/system.json", string)
 DEMO_HOST   :: "house-laptop"
 DEFAULT_FOLDER :: "/etc/socle"
 PROFILES    :: "/nix/var/nix/profiles"
@@ -161,7 +161,7 @@ evaluate :: proc(folder, host: string) -> (text: string, why: string) {
 // What a failed nix command says, from its first "error:" on (its trace is long and seldom what a person needs).
 nix_error :: proc(stderr: string) -> string {
 	s := stderr
-	if at := strings.last_index(s, "error:"); at >= 0 { s = s[at:] }
+	if at := strings.last_index(s, "error:"); at >= 0 { s = s[at:] } else { s = "" }
 	out := strings.clone(strings.trim_space(s))
 	delete(stderr)
 	return out == "" ? strings.clone("nix failed") : out

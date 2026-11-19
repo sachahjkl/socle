@@ -6,6 +6,7 @@ package socle_film
 
 import "core:fmt"
 import "core:os"
+import "core:strings"
 import "core:time"
 import "gt:film"
 import "gt:platform"
@@ -27,10 +28,15 @@ Take :: struct {
 	card: ^Card,
 }
 
+//   socle_film [out.mp4]                    the presentation film, on the demo
+//   socle_film --folder=<path> [out.mp4]    a check of a real folder: it loads, its pages, its searches; nothing applied
 main :: proc() {
-	out := len(os.args) > 1 ? os.args[1] : FILM_OUT
+	out, folder := FILM_OUT, ""
+	for a in os.args[1:] {
+		if strings.has_prefix(a, "--folder=") { folder = a[len("--folder="):] } else { out = a }
+	}
 	began := time.tick_now()
-	if why := shoot(out); why != "" {
+	if why := shoot(out, folder); why != "" {
 		fmt.eprintfln("socle_film: %s", why)
 		os.exit(1)
 	}
@@ -38,10 +44,11 @@ main :: proc() {
 }
 
 @(private = "file")
-shoot :: proc(out: string) -> string {
+shoot :: proc(out, folder: string) -> string {
 	t := new(Take)
 	defer free(t)
-	t.app = socle.open({args = {"--demo", fmt.tprintf("--size=%dx%d", WINDOW_LOGICAL.x, WINDOW_LOGICAL.y)}, headless = true, gpu = true})
+	source := folder != "" ? fmt.tprintf("--folder=%s", folder) : "--demo"
+	t.app = socle.open({args = {source, fmt.tprintf("--size=%dx%d", WINDOW_LOGICAL.x, WINDOW_LOGICAL.y)}, headless = true, gpu = true})
 	if t.app == nil { return "socle's window does not open" }
 	defer socle.close(t.app)
 	platform.set_offscreen_dpi(t.app.main.win, DPI_STAGED)
@@ -53,8 +60,71 @@ shoot :: proc(out: string) -> string {
 	if info := render.adapter_info(&t.app.shared.r); info.software {
 		fmt.eprintfln("socletool film: on the software renderer (%s): slow", info.name)
 	}
-	script(t)
+	if folder != "" {
+		if why := folder_script(t); why != "" { _ = film.finish(&t.rec); return why }
+	} else {
+		script(t)
+	}
 	return film.finish(&t.rec)
+}
+
+// Frames of the window, unrecorded, until `done` says so or `seconds` of real time pass: the window waits on nix,
+// which takes real time; the film shows the moment after.
+@(private = "file")
+until :: proc(t: ^Take, done: proc(app: ^socle.App) -> bool, seconds: f64) -> bool {
+	began := time.tick_now()
+	for !done(t.app) {
+		if time.duration_seconds(time.tick_since(began)) > seconds { return false }
+		socle.frame(t.app)
+		time.sleep(50 * time.Millisecond)
+	}
+	for _ in 0 ..< 3 { socle.frame(t.app) }
+	return true
+}
+
+// A real folder: it evaluates, its pages show its values, the whole catalogue and every option are searched; a value
+// changed then discarded. Nothing is built or applied.
+@(private = "file")
+folder_script :: proc(t: ^Take) -> string {
+	r := &t.rec
+	film.switch_to(r, socle_app(t))
+	if !until(t, proc(app: ^socle.App) -> bool { return app.load == .Ready || app.load == .Failed || app.load == .Absent }, 300) {
+		return "the folder did not load in five minutes"
+	}
+	if t.app.load != .Ready { return fmt.tprintf("the folder did not load: %v %s", t.app.load, t.app.load_error) }
+	film.hold(r, 1.5)
+	tap(t, "nav_Apps", after = 0.4)
+	tap(t, "apps_field", after = 0.2)
+	film.type_text(r, "inkscape", 10)
+	if !until(t, proc(app: ^socle.App) -> bool { return app.catalogue.state == .Ready && app.catalogue.answered == app.catalogue.asked || app.catalogue.state == .Failed }, 600) {
+		return "the catalogue was not read in ten minutes"
+	}
+	if t.app.catalogue.state == .Failed { return fmt.tprintf("the catalogue failed: %s", t.app.catalogue.why) }
+	film.hold(r, 1.5)
+	fmt.printfln("socle_film: the catalogue has %d packages; \"inkscape\" finds %d", len(t.app.catalogue.entries), len(t.app.catalogue.hits))
+	tap(t, "nav_Desktop", after = 0.6)
+	tap(t, "", "Plasma", after = 0.6)
+	// (the film's clock, past the evaluator's delay: unrecorded frames do not move it)
+	film.hold(r, 1.5)
+	if !until(t, proc(app: ^socle.App) -> bool { return !app.evaluating && app.eval_due_ms == 0 }, 300) { return "the draft was not evaluated" }
+	film.hold(r, 1.0)
+	fmt.printfln("socle_film: %d changes, evaluation: %s", len(t.app.changes), t.app.eval_error == "" ? "valid" : t.app.eval_error)
+	tap(t, "changes_discard", after = 0.8)
+	tap(t, "nav_All_Settings", after = 0.4)
+	tap(t, "options_field", after = 0.2)
+	film.type_text(r, "bluetooth powerOnBoot", 12)
+	if !until(t, proc(app: ^socle.App) -> bool { return app.options_index.state == .Ready && app.options_index.answered == app.options_index.asked || app.options_index.state == .Failed }, 900) {
+		return "the options were not read in fifteen minutes"
+	}
+	if t.app.options_index.state == .Failed { return fmt.tprintf("the options failed: %s", t.app.options_index.why) }
+	fmt.printfln("socle_film: %d options; the search finds %d", len(t.app.options_index.entries), len(t.app.options_index.hits))
+	film.hold(r, 1.0)
+	tap(t, "option0", after = 0.4)
+	until(t, proc(app: ^socle.App) -> bool { _, known := app.option_values[app.option]; return known }, 120)
+	film.hold(r, 1.5)
+	tap(t, "nav_History", after = 1.5)
+	tap(t, "nav_Overview", after = 1.5)
+	return ""
 }
 
 @(private = "file")

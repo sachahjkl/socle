@@ -25,9 +25,24 @@ Ran :: struct {
 	stderr: string,
 }
 
+// This process's environment for a child. Determinate Nix's lazy trees lock a git source with submodules (socle's own)
+// with a hash that a later evaluation refuses: socle's nix calls do without them (a Nix that has no such setting says
+// so on its standard error, and goes on).
+child_env :: proc() -> []string {
+	env, _ := os.environ(context.temp_allocator)
+	out := make([dynamic]string, context.temp_allocator)
+	given := ""
+	for e in env {
+		if strings.has_prefix(e, "NIX_CONFIG=") { given = e[len("NIX_CONFIG="):]; continue }
+		append(&out, e)
+	}
+	append(&out, strings.concatenate({"NIX_CONFIG=", given, given != "" ? "\n" : "", "lazy-trees = false"}, context.temp_allocator))
+	return out[:]
+}
+
 // Runs `command` in `dir` ("": this process's) and waits; its output in `allocator`.
 run :: proc(command: []string, dir := "", allocator := context.allocator) -> (r: Ran) {
-	env, _ := os.environ(context.temp_allocator)
+	env := child_env()
 	sync.mutex_lock(&start_lock)
 	state, out, err, e := os.process_exec({command = command, working_dir = dir, env = env}, allocator)
 	sync.mutex_unlock(&start_lock)
@@ -44,7 +59,7 @@ run :: proc(command: []string, dir := "", allocator := context.allocator) -> (r:
 // Runs `command` and gives each line of its standard error to `line` as it comes (a build's log), then waits.
 // Its standard output (a path, a result) comes back whole.
 run_lines :: proc(command: []string, dir: string, line: proc(user: rawptr, text: string), user: rawptr, allocator := context.allocator) -> (r: Ran) {
-	env, _ := os.environ(context.temp_allocator)
+	env := child_env()
 	err_r, err_w, perr := os.pipe()
 	if perr != nil { return }
 	out_r, out_w, oerr := os.pipe()
