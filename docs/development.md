@@ -23,6 +23,12 @@ odin run tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool
 | Command | What it does |
 |---|---|
 | `changelog new <type> <text>`, `check`, `preview` | a fragment of `changelog.d/`, their check, what the next version brings |
+| `ship <patch\|minor\|major\|x.y.z>`, `notes <version>` | a version: the changelog's section, `src/version.odin`, the commit, the tag, the push; a version's notes |
+| `logo` | `assets/logo*.png`, `assets/socle.ico` and `.project/image.png`, drawn by the toolkit's paint package |
+| `mockups [names]` | `docs/mockups/*.html` drawn to PNG at 1280 × 800 by a headless Chromium |
+| `build [release]`, `test`, `check` | the program `build/socle` (the toolkit's native library first), its tests, every check (gui_toolkit's `toolbox.build_commands`) |
+| `film [out.mp4]` | the presentation film: `tools/socle_film` drives socle's window headless on the graphics card (gt:film), ffmpeg encodes it (NVENC when there is one): `site/socle.mp4` |
+| `site build <site> <out>`, `check`, `card` | the site's pages (gt:site), published by `.github/workflows/pages.yml` |
 
 `build`, `test` and `check` come from gui_toolkit (`toolbox.build_commands`) with the first code of the program.
 `GT=<folder>` builds against another checkout of gui_toolkit.

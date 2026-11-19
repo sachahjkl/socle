@@ -14,7 +14,8 @@ Every step is a command of `tools/socletool` (`help` lists them):
 
     odin run tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool -keep-executable -- <command>
 
-- `changelog new|check|preview`. `build`, `test` and `check` come with the first code of the program.
+- `build [release]`, `test`, `check`, `changelog new|check|preview`, `ship`, `notes`, `logo`, `site`.
+- `film [out.mp4]`: the site's film, socle's window driven headless on the graphics card (`tools/socle_film`).
 - `mockups [names]` draws `docs/mockups/*.html` to PNG with a headless Chromium (`CHROMIUM=<program>` for another).
 - Linux: `nix develop` first (`flake.nix`: the pinned Odin, Rust, the hooks).
 

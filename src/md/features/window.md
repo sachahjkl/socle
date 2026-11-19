@@ -34,6 +34,18 @@ preference.
 | option | setting |
 | module (in `custom/`) | code |
 
+## As built: the demo window
+
+The first window (`src/*.odin`) runs on a demo system (`demo.odin`): the overview, Apps, Desktop, History, Templates
+and All settings, the bar of changes, the review and the try with its countdown. The draft and the applied version are
+two `Settings`; `changes_update` makes the list of changes again at each change of the draft, never in a frame.
+Preparing is a clock of `PREPARE_MS` and the helper is the window itself: the stages, their order and their words are
+the real ones, so the evaluator, the builder and the helper replace them without a change of the pages. The other
+pages say that they come with their feature.
+
+`socletool film` drives this window headless on the graphics card (`tools/socle_film`, gt:film): the site's film and
+its pictures come from it.
+
 ## At rest
 
 The window does no work at rest. The evaluator, the builder and the catalogue sleep until a change, a query or an

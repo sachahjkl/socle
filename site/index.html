@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Socle: your whole system in one window</title>
+<meta name="description" content="Your whole system in one window: start from a ready-made system, change any setting, go back in one step.">
+<link rel="icon" href="img/logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="#"><img src="img/logo.png" alt="" width="28" height="28"><span>Socle</span></a>
+  <button class="burger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav"><span></span></button>
+  <!-- site-nav -->
+</header>
+
+<main>
+  <section class="hero">
+    <img class="mark" src="img/logo.png" alt="Socle logo" width="128" height="128">
+    <h1>Socle</h1>
+    <p class="lead">Your whole system in one window: start from a ready-made system, change any setting, go back in one step.</p>
+    <span class="status">In development: the window runs on a demo system</span>
+    <div class="actions">
+      <a class="btn accent" href="#film">Watch the film</a>
+      <a class="btn" href="https://github.com/sachahjkl/socle">Source on GitHub</a>
+    </div>
+    <p class="small">For NixOS, and for Nix on any other system &nbsp;·&nbsp; MIT</p>
+  </section>
+
+  <figure class="film" id="film">
+    <video controls preload="metadata" playsinline poster="img/film.jpg" src="socle.mp4"></video>
+  </figure>
+
+  <section id="features" class="grid">
+    <article class="card">
+      <h3>Start from a ready-made system</h3>
+      <p>A family desktop, a gaming machine, a developer's workstation, a home server. Pick one, then change anything
+        in it. Your choices always win over the template's.</p>
+    </article>
+    <article class="card">
+      <h3>Every setting in plain words</h3>
+      <p>Apps, people, desktop, hardware, network, printing, sharing: each page is made from the options of the system
+        itself, so it is never behind. Every other option is one search away.</p>
+    </article>
+    <article class="card">
+      <h3>Review, try, keep</h3>
+      <p>Each change is shown in words before it applies. The new system runs on trial: if nobody says "Keep" within
+        60 seconds, it goes back by itself. A broken network or screen fixes itself.</p>
+    </article>
+    <article class="card">
+      <h3>Go back in one step</h3>
+      <p>Every version of the system stays, with the settings that made it. Go back to any of them, then free the
+        space of the old ones when you want.</p>
+    </article>
+    <article class="card">
+      <h3>A plain flake underneath</h3>
+      <p>Socle writes data, never Nix code. The configuration stays a flake that you can read, keep in git and build
+        with <code>nixos-rebuild</code>, without Socle. Your own Nix lives beside it, untouched.</p>
+    </article>
+    <article class="card">
+      <h3>Make your own, share it</h3>
+      <p>Save your system as a template, extend someone else's, publish it as a git repository. Anyone can start a
+        machine from it.</p>
+    </article>
+    <article class="card">
+      <h3>Install from a live image</h3>
+      <p>Socle's images boot into its installer: a disk, a person, a template, done. The system comes with Determinate
+        Nix, nh and nix-output-monitor, each one a setting.</p>
+    </article>
+    <article class="card">
+      <h3>NixOS, or just Nix</h3>
+      <p>On NixOS, Socle runs the whole machine. On any other Linux or on macOS, it runs your apps, shell and settings
+        through Home Manager, and installs Nix if it is missing.</p>
+    </article>
+  </section>
+
+  <section class="gallery">
+    <figure class="shot"><a class="frame" href="img/overview.png"><img src="img/overview.png" alt="The overview: the running version, its updates, its pages" loading="lazy"></a><figcaption>The overview</figcaption></figure>
+    <figure class="shot"><a class="frame" href="img/apps.png"><img src="img/apps.png" alt="The apps: OBS Studio added, VLC of the template removed" loading="lazy"></a><figcaption>Apps, added and removed</figcaption></figure>
+    <figure class="shot"><a class="frame" href="img/desktop.png"><img src="img/desktop.png" alt="The desktop page: Plasma chosen over the template's GNOME, a session that opens by itself" loading="lazy"></a><figcaption>A page of settings</figcaption></figure>
+    <figure class="shot"><a class="frame" href="img/review.png"><img src="img/review.png" alt="The review of four changes, a session that restarts" loading="lazy"></a><figcaption>The review</figcaption></figure>
+    <figure class="shot"><a class="frame" href="img/keep.png"><img src="img/keep.png" alt="Keep this version? A countdown, then the system goes back by itself" loading="lazy"></a><figcaption>Try, then keep</figcaption></figure>
+    <figure class="shot"><a class="frame" href="img/history.png"><img src="img/history.png" alt="The history of the versions, each one with its changes" loading="lazy"></a><figcaption>Every version</figcaption></figure>
+    <figure class="shot"><a class="frame" href="img/templates.png"><img src="img/templates.png" alt="The gallery of templates" loading="lazy"></a><figcaption>Templates</figcaption></figure>
+    <figure class="shot"><a class="frame" href="img/all-settings.png"><img src="img/all-settings.png" alt="Every option, its value and who sets it" loading="lazy"></a><figcaption>All settings</figcaption></figure>
+  </section>
+</main>
+
+<!-- site-footer -->
+<script>
+  // the bar's menu on narrow screens: the button opens it, a link or a click elsewhere closes it
+  const bar = document.querySelector('.bar'), burger = bar.querySelector('.burger');
+  const shut = () => { bar.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); };
+  burger.addEventListener('click', e => { e.stopPropagation(); burger.setAttribute('aria-expanded', String(bar.classList.toggle('open'))); });
+  bar.querySelectorAll('nav a').forEach(a => a.addEventListener('click', shut));
+  document.addEventListener('click', e => { if (!bar.contains(e.target)) shut(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+</script>
+<script src="gallery.js" defer></script>
+</body>
+</html>

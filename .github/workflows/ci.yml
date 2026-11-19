@@ -1,0 +1,39 @@
+name: CI
+
+# Every push to master and every pull request: the flake's checks (the hooks), then socletool built with -vet and its
+# check of the changelog, in the flake's shell, as on a developer's machine. The program's own build and tests join
+# with its first code.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux x64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+      - name: nix flake check
+        run: nix flake check
+      - name: socletool
+        run: |
+          nix develop --command sh -c '
+            set -e
+            mkdir -p build
+            odin build tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool -vet -strict-style
+            build/socletool changelog check
+          '

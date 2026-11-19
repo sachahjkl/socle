@@ -1,0 +1,44 @@
+# Publishes site/ to GitHub Pages with the pages socletool makes of it and of CHANGELOG.md (socletool site build).
+# Pages use the "GitHub Actions" source (set once: gh api -X POST repos/sachahjkl/socle/pages -f build_type=workflow).
+name: Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "site/**"
+      - "CHANGELOG.md"
+      - "tools/socletool/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/configure-pages@v5
+      - uses: ./.github/actions/setup-odin-linux
+      - run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends webp   # (cwebp: the pictures in WebP, site build)
+      - run: |
+          odin build tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool
+          build/socletool site build site _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
