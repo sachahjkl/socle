@@ -11,6 +11,7 @@
   lib,
   pkgs,
   socleLib,
+  images,
 }: let
   # (the test bed's folder, with the test driver's link in its code: tests/switch/custom/test.nix)
   root = ../tests/switch;
@@ -82,6 +83,25 @@
     })
     .nixosConfigurations
     .socle-test;
+  # The Desktop image, with the test driver's link, started from its ISO on UEFI as a computer starts it
+  # (nixos/tests/boot.nix)
+  imageISO = (images.desktopWith [({modulesPath, ...}: {imports = [(modulesPath + "/testing/test-instrumentation.nix")];})]).config.system.build.isoImage;
+  imageStart = let
+    qemu =
+      (import (inputs.nixpkgs + "/nixos/lib/qemu-common.nix") {
+        inherit lib;
+        inherit (pkgs) stdenv;
+      }).qemuBinary
+      pkgs.qemu_test;
+  in
+    lib.concatStringsSep " " [
+      qemu
+      "-m 4096 -smp 2 -vga virtio"
+      "-cdrom ${imageISO}/iso/${imageISO.name}"
+      "-drive if=pflash,format=raw,unit=0,readonly=on,file=${pkgs.OVMF.firmware}"
+      "-drive if=pflash,format=raw,unit=1,readonly=on,file=${pkgs.OVMF.variables}"
+    ];
+
   # (both machines are one: the installer writes the disk that the target starts from, as nixos/tests/installer.nix)
   installDisk = {
     virtualisation = {
@@ -165,6 +185,34 @@ in {
       helper("collect 1")
       machine.succeed("test \"$(nix-env --list-generations -p /nix/var/nix/profiles/system | wc -l)\" = 1")
       machine.succeed(f"test -e {path}")
+    '';
+  };
+
+  # The Desktop image starts its installer: greetd, the kiosk session of sway, socle's window in it.
+  image = pkgs.testers.runNixOSTest {
+    name = "socle-image";
+    nodes = {};
+    testScript = ''
+      machine = create_machine("${imageStart}")
+      # (a machine of create_machine outlives a failed script: it is stopped whatever happens)
+      try:
+          machine.start()
+          machine.wait_for_unit("greetd.service")
+          machine.succeed("test -d /sys/firmware/efi")
+          machine.wait_until_succeeds("pgrep -f 'socle install'", timeout=180)
+          # (the window is in sway's tree: it opened, on the image's own graphics)
+          machine.wait_until_succeeds(
+              "SWAYSOCK=$(ls /run/user/1000/sway-ipc.*.sock) swaymsg -t get_tree | grep -q '\"app_id\": \"socle\"'",
+              timeout=180,
+          )
+          machine.screenshot("installer")
+          # (the live user runs the helper without a password, polkit's rule for socle's action: the helper itself
+          # answers, and refuses a folder that is not one)
+          rc, out = machine.execute("su nixos -c 'pkexec --disable-internal-agent ${self.packages.${pkgs.stdenv.hostPlatform.system}.socle}/bin/socle helper install /nonexistent' 2>&1")
+          print(out)
+          assert "is not a folder that socle wrote" in out, "the helper did not run for the live user"
+      finally:
+          machine.crash()
     '';
   };
 

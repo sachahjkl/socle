@@ -30,13 +30,18 @@ Take :: struct {
 
 //   socle_film [out.mp4]                    the presentation film, on the demo
 //   socle_film --folder=<path> [out.mp4]    a check of a real folder: it loads, its pages, its searches; nothing applied
+//   socle_film --install [out.mp4]          the installer, on the demo: each page, then the install
 main :: proc() {
-	out, folder := FILM_OUT, ""
+	out, folder, install := FILM_OUT, "", false
 	for a in os.args[1:] {
-		if strings.has_prefix(a, "--folder=") { folder = a[len("--folder="):] } else { out = a }
+		switch {
+		case strings.has_prefix(a, "--folder="): folder = a[len("--folder="):]
+		case a == "--install": install = true
+		case: out = a
+		}
 	}
 	began := time.tick_now()
-	if why := shoot(out, folder); why != "" {
+	if why := shoot(out, folder, install); why != "" {
 		fmt.eprintfln("socle_film: %s", why)
 		os.exit(1)
 	}
@@ -44,11 +49,11 @@ main :: proc() {
 }
 
 @(private = "file")
-shoot :: proc(out, folder: string) -> string {
+shoot :: proc(out, folder: string, install: bool) -> string {
 	t := new(Take)
 	defer free(t)
 	source := folder != "" ? fmt.tprintf("--folder=%s", folder) : "--demo"
-	t.app = socle.open({args = {source, fmt.tprintf("--size=%dx%d", WINDOW_LOGICAL.x, WINDOW_LOGICAL.y)}, headless = true, gpu = true})
+	t.app = socle.open({args = {source, fmt.tprintf("--size=%dx%d", WINDOW_LOGICAL.x, WINDOW_LOGICAL.y)}, headless = true, gpu = true, install = install})
 	if t.app == nil { return "socle's window does not open" }
 	defer socle.close(t.app)
 	platform.set_offscreen_dpi(t.app.main.win, DPI_STAGED)
@@ -60,7 +65,9 @@ shoot :: proc(out, folder: string) -> string {
 	if info := render.adapter_info(&t.app.shared.r); info.software {
 		fmt.eprintfln("socletool film: on the software renderer (%s): slow", info.name)
 	}
-	if folder != "" {
+	if install {
+		if why := install_script(t); why != "" { _ = film.finish(&t.rec); return why }
+	} else if folder != "" {
 		if why := folder_script(t); why != "" { _ = film.finish(&t.rec); return why }
 	} else {
 		script(t)
@@ -124,6 +131,45 @@ folder_script :: proc(t: ^Take) -> string {
 	film.hold(r, 1.5)
 	tap(t, "nav_History", after = 1.5)
 	tap(t, "nav_Overview", after = 1.5)
+	return ""
+}
+
+// The installer on the demo machine: a language, a disk, a person, a system, the review, the install to its end.
+@(private = "file")
+install_script :: proc(t: ^Take) -> string {
+	r := &t.rec
+	film.switch_to(r, socle_app(t))
+	film.fade(r, 0.5)
+	film.pointer_show(r, true, film.center(film.box(r, "install_scroll"), {0.5, 0.6}))
+	film.hold(r, 1.2)
+	tap(t, "wizard_next", after = 0.8)
+	if t.app.installer.page != .Disk { return fmt.tprintf("Next led to %v, not to the disk", t.app.installer.page) }
+	tap(t, "disk_pick0", after = 0.4)
+	tap(t, "encrypt", after = 0.4)
+	tap(t, "passphrase", after = 0.2)
+	film.type_text(r, "correct horse", 14)
+	tap(t, "passphrase2", after = 0.2)
+	film.type_text(r, "correct horse", 14)
+	film.hold(r, 0.6)
+	tap(t, "wizard_next", after = 0.8)
+	tap(t, "full_name", after = 0.2)
+	film.type_text(r, "Ada Lovelace", 14)
+	tap(t, "login", after = 0.2)
+	film.type_text(r, "ada", 10)
+	tap(t, "password", after = 0.2)
+	film.type_text(r, "analytical", 14)
+	tap(t, "password2", after = 0.2)
+	film.type_text(r, "analytical", 14)
+	film.hold(r, 0.8)
+	tap(t, "wizard_next", after = 0.8)
+	if t.app.installer.page != .Template { return fmt.tprintf("the person's page led to %v", t.app.installer.page) }
+	tap(t, "template_pick0", after = 0.6)
+	tap(t, "wizard_next", after = 1.6)
+	if t.app.installer.page != .Review { return "the review did not show" }
+	tap(t, "install_go", after = 0.5)
+	for i := 0; i < 400 && !t.app.installer.done; i += 1 { film.hold(r, 0.1) }
+	if !t.app.installer.done { return "the demo's install did not end" }
+	film.hold(r, 2.5)
 	return ""
 }
 

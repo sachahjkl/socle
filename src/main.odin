@@ -4,6 +4,7 @@
 //   socle --demo              the window on the demo system (tests/demo): the pictures and the film
 //   socle --page=apps         a page first (overview, apps, desktop, people, history, templates, updates, settings, ...)
 //   socle --headless          no window of the system (a picture, a film)
+//   socle install             the installer's window (installer.odin); with --disk=..., the terminal's (install_cli.odin)
 //   socle helper <verb> ...   the root part, run by pkexec (helper.odin)
 package socle
 
@@ -68,6 +69,9 @@ App :: struct {
 	setup_ref:   int,            // Setup: the template chosen
 	setup_sure:  bool,
 
+	// the installer's window, in place of the system's (installer.odin): nil unless `socle install`
+	installer:     ^Installer,
+
 	// the two big lists (search.odin)
 	catalogue:     Index,
 	options_index: Index,
@@ -82,6 +86,7 @@ Open_Options :: struct {
 	args:     []string,
 	headless: bool,
 	gpu:      bool,   // headless on the graphics card (a film)
+	install:  bool,   // the installer's window
 }
 
 // socle's colours: the Midnight theme with the blue of its mark (Nix's).
@@ -138,6 +143,10 @@ open :: proc(o: Open_Options) -> ^App {
 	app.lock_now = make(map[string]i64)
 	app.lock_committed = make(map[string]i64)
 	views_register_all(app)
+	if o.install {
+		installer_open(app)
+		return app
+	}
 	load_start(app)
 	page_open(app, page)
 	return app
@@ -165,6 +174,7 @@ close :: proc(app: ^App) {
 	ui.chores_stop()
 	host.host_close(&app.main)
 	the_app = nil
+	installer_close(app)
 	for c in app.changes { delete(c.text); delete(c.page) }
 	delete(app.changes)
 	generations_destroy(&app.generations)
@@ -204,13 +214,17 @@ params :: proc(h: ^host.Host, p: ^ui.Build_Params) {
 main :: proc() {
 	args := os.args[1:]
 	if len(args) > 0 && args[0] == "helper" { os.exit(helper_main(args[1:])) }
-	// (with flags, the terminal's install; without, the installer's window)
-	if len(args) > 1 && args[0] == "install" { os.exit(install_cli(args[1:])) }
+	// (with a disk named, the terminal's install; without, the installer's window)
+	install := len(args) > 0 && args[0] == "install"
+	if install {
+		args = args[1:]
+		for a in args { if strings.has_prefix(a, "--disk=") { os.exit(install_cli(args)) } }
+	}
 	if len(args) > 0 && (args[0] == "version" || args[0] == "--version") {
 		fmt.println(APP_NAME, APP_VERSION)
 		return
 	}
-	app := open({args = args})
+	app := open({args = args, install = install})
 	if app == nil { fmt.eprintln("socle: no window could be opened"); os.exit(1) }
 	defer close(app)
 	if !platform.is_offscreen(app.main.win) { platform.show_window(app.main.win) }

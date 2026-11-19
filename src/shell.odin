@@ -44,6 +44,11 @@ OWN_PAGES :: [?]string{"apps", "desktop", "people"}
 build :: proc(h: ^host.Host, size: host.Vec2) {
 	app := (^App)(h.user)
 	em := ui.font_size()
+	if app.installer != nil {
+		installer_build(app, em)
+		ui.set_toast_area({{0, ui.dense(em * 2.8)}, {size.x, size.y - ui.dense(em * 3.6)}})
+		return
+	}
 	// (in the build: what moves with the clock asks for its frames and its wakes here)
 	apply_step(app)
 	evaluator_step(app)

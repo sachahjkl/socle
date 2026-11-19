@@ -37,6 +37,9 @@
       socle = self;
     };
 
+    # socle's live images (nix/images.nix)
+    images = import ./nix/images.nix {inherit self inputs lib;};
+
     wgpu = pkgs.fetchurl {
       url = "https://github.com/gfx-rs/wgpu-native/releases/download/v29.0.1.1/wgpu-linux-x86_64-release.zip";
       sha256 = "95a4d90c071005a98d03eab348beaa6b07e16eb00d1dcdb9f8348f75eb97ec5a";
@@ -89,11 +92,12 @@
       inherit version;
       src = lib.fileset.toSource {
         root = ./.;
-        fileset = lib.fileset.difference ./. (lib.fileset.unions (map lib.fileset.maybeMissing [./site ./build ./docs ./tests]));
+        # (tests/install stays: a unit test of the program loads its machine layer)
+        fileset = lib.fileset.difference ./. (lib.fileset.unions (map lib.fileset.maybeMissing [./site ./build ./docs ./tests/demo ./tests/sample ./tests/bare ./tests/switch ./tests/vm]));
       };
       # the crates of the toolkit's native library, vendored: cargo makes no request
       cargoDeps = pkgs.rustPlatform.importCargoLock {lockFile = ./ext/gui_toolkit/native/gt/Cargo.lock;};
-      nativeBuildInputs = [odin pkgs.cargo pkgs.rustc pkgs.clang pkgs.lld pkgs.autoPatchelfHook pkgs.copyDesktopItems];
+      nativeBuildInputs = [odin pkgs.cargo pkgs.rustc pkgs.clang pkgs.lld pkgs.autoPatchelfHook pkgs.copyDesktopItems pkgs.removeReferencesTo];
       buildInputs = [pkgs.fontconfig pkgs.freetype pkgs.stdenv.cc.cc.lib];
       # what it opens with dlopen goes in its RUNPATH; the Vulkan driver is the system's (/run/opengl-driver)
       runtimeDependencies = runtime;
@@ -139,8 +143,12 @@
           install -Dm644 assets/logo_$size.png "$out/share/icons/hicolor/''${size}x''${size}/apps/socle.png"
         done
         install -Dm644 -t $out/share/doc/socle LICENSE README.md CHANGELOG.md
+        # (the compiler's and the crates' source paths, in the debug information and Rust's panic messages: kept, they
+        # would bring Odin, clang and LLVM into every system, 1.5 GB)
+        remove-references-to -t ${odin} -t $cargoDeps $out/bin/socle
         runHook postInstall
       '';
+      disallowedReferences = [odin];
       meta = {
         description = "Your whole system in one window: start from a ready-made system, change any setting, go back in one step.";
         homepage = "https://socle.froment.software/";
@@ -170,6 +178,9 @@
     packages.${system} = {
       inherit odin socle;
       default = socle;
+      # socle's live images (nix/images.nix)
+      iso-desktop = self.nixosConfigurations.image-desktop.config.system.build.isoImage;
+      iso-minimal = self.nixosConfigurations.image-minimal.config.system.build.isoImage;
     };
     apps.${system} = {
       default = {
@@ -185,11 +196,14 @@
     # opt-in tests (not in checks): a virtual machine each
     legacyPackages.${system}.tests = import ./nix/tests.nix {
       inherit self inputs lib pkgs;
-      inherit socleLib;
+      inherit socleLib images;
     };
-    nixosConfigurations.vm = import ./nix/vm.nix {
-      inherit self inputs lib;
-      inherit socleLib;
+    nixosConfigurations = {
+      vm = import ./nix/vm.nix {
+        inherit self inputs lib;
+        inherit socleLib;
+      };
+      inherit (images) image-desktop image-minimal;
     };
     checks.${system} =
       {
