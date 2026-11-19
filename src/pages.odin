@@ -658,7 +658,8 @@ history_page :: proc(app: ^App, em: f32) {
 	if ui.list_card("###versions") {
 		for g, i in app.generations {
 			if ui.card_row(fmt.tprintf("###version%d", i)) {
-				ui.next({width = ui.px(em * 8.5), height = ui.children_sum(), axis = .Y})
+				// (wide enough for the longest date, "30 September 2026", with a gap before the title)
+				ui.next({width = ui.px(em * 11), height = ui.children_sum(), axis = .Y})
 				if ui.column(id = fmt.tprintf("###version_number%d", i)) {
 					ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0})
 					ui.label(fmt.tprintf("Version %d###version_title%d", g.number, i))
