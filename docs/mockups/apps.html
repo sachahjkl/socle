@@ -1,0 +1,89 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="socle.css">
+<style>
+  .tools { display: flex; gap: 12px; align-items: center; margin: 16px 0 14px; }
+  .tools .field { width: 360px; }
+  .layout { display: grid; grid-template-columns: 170px 1fr; gap: 18px; }
+  .cats a { display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 6px; color: var(--text); }
+  .cats a span { color: var(--faint); font-size: 12px; }
+  .cats a.on { background: var(--raise); }
+  .app .ico { font-weight: 700; font-size: 14px; color: #fff; }
+  .app .ver { font-size: 12px; color: var(--faint); width: 70px; text-align: right; }
+  .app .act { width: 108px; display: flex; justify-content: flex-end; }
+  .struck b { text-decoration: line-through; color: var(--muted); }
+</style></head>
+<body data-page="apps">
+<div class="body"><main class="main"><div class="content">
+
+  <div class="head"><h1>Apps</h1>
+    <div class="right"><span class="seg"><span class="on">For everyone</span><span>Sacha</span><span>Lou</span><span>Noé</span></span></div>
+  </div>
+
+  <div class="tools">
+    <div class="field"><i class="i muted">&#xe151;</i>video</div>
+    <span class="seg"><span class="on">Popular</span><span>Every package</span></span>
+  </div>
+
+  <div class="layout">
+    <div class="cats">
+      <a>Installed <span>46</span></a>
+      <a>Internet <span>38</span></a>
+      <a>Office <span>22</span></a>
+      <a class="on">Video and sound <span>31</span></a>
+      <a>Graphics <span>27</span></a>
+      <a>Games <span>44</span></a>
+      <a>Education <span>19</span></a>
+      <a>Development <span>63</span></a>
+      <a>Tools <span>52</span></a>
+    </div>
+
+    <div class="card rows">
+      <div class="row app">
+        <div class="ico" style="background:#302f3a">●</div>
+        <div class="label"><b>OBS Studio <span class="dot"></span></b><span>Record and stream the screen, a camera and sound</span></div>
+        <span class="ver">32.0.2</span><div class="act"><span class="btn small"><i class="i">&#xe06c;</i>Added</span></div>
+      </div>
+      <div class="row app struck">
+        <div class="ico" style="background:#c8661e">▶</div>
+        <div class="label"><b>VLC <span class="dot"></span></b><span>From the template Family desktop, removed by you</span></div>
+        <span class="ver">3.0.21</span><div class="act"><span class="btn small ghost"><i class="i">&#xe148;</i>Put back</span></div>
+      </div>
+      <div class="row app">
+        <div class="ico" style="background:#2a5f8f">K</div>
+        <div class="label"><b>Kdenlive</b><span>Edit videos: tracks, transitions, titles, effects</span></div>
+        <span class="ver">25.08.3</span><div class="act"><span class="btn small"><i class="i">&#xe13d;</i>Add</span></div>
+      </div>
+      <div class="row app">
+        <div class="ico" style="background:#5b3c7a">m</div>
+        <div class="label"><b>mpv</b><span>A small video player driven by the keyboard</span></div>
+        <span class="ver">0.41.0</span><div class="act"><span class="btn small"><i class="i">&#xe13d;</i>Add</span></div>
+      </div>
+      <div class="row app">
+        <div class="ico" style="background:#1f6f62">S</div>
+        <div class="label"><b>Shotcut</b><span>Edit videos, from a clip to a film</span></div>
+        <span class="ver">25.10.31</span><div class="act"><span class="btn small"><i class="i">&#xe13d;</i>Add</span></div>
+      </div>
+      <div class="row app">
+        <div class="ico" style="background:#262626;border:1px solid var(--line2)">D</div>
+        <div class="label"><b>DaVinci Resolve <span class="pill orange">Not free</span></b><span>Professional editing, colour, effects and sound</span></div>
+        <span class="ver">20.2.1</span><div class="act"><span class="btn small"><i class="i">&#xe13d;</i>Add</span></div>
+      </div>
+      <div class="row app">
+        <div class="ico" style="background:#8a2f2f">H</div>
+        <div class="label"><b>HandBrake</b><span>Convert videos to other formats and sizes</span></div>
+        <span class="ver">1.10.2</span><div class="act"><span class="btn small"><i class="i">&#xe13d;</i>Add</span></div>
+      </div>
+      <div class="row app">
+        <div class="ico" style="background:#3d5a2a">A</div>
+        <div class="label"><b>Audacity</b><span>Record and edit sound</span></div>
+        <span class="ver">3.7.5</span><div class="act"><span class="btn small"><i class="i">&#xe06c;</i>Added</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="bar"><span class="dot"></span><span class="what">4 changes</span>
+  <div class="right"><span class="btn ghost">Discard</span><span class="btn primary">Review and apply</span></div></div>
+</main></div>
+<script src="shell.js"></script>
+</body></html>

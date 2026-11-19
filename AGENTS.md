@@ -15,13 +15,14 @@ Every step is a command of `tools/socletool` (`help` lists them):
     odin run tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool -keep-executable -- <command>
 
 - `changelog new|check|preview`. `build`, `test` and `check` come with the first code of the program.
+- `mockups [names]` draws `docs/mockups/*.html` to PNG with a headless Chromium (`CHROMIUM=<program>` for another).
 - Linux: `nix develop` first (`flake.nix`: the pinned Odin, Rust, the hooks).
 
 ## Rules
 
 - The interface's thread never waits. No `nix`, `git`, disk, process or D-Bus call runs there, not even a `stat`. Each
   such call is a job on a worker; its result comes back with `ui.post`.
-- socle writes only its own files: the layers (`socle/*.json`) and the generated entry (`flake.nix`, `socle/hosts.nix`).
+- socle writes only its own files: the layers (`socle/**/*.json`), the hardware reports and the generated `flake.nix`.
   It never reads, parses or rewrites Nix that a person wrote. The person's Nix lives in `custom/`, imported as it is.
 - The configuration that socle manages builds without socle: `nixos-rebuild switch --flake <folder>#<host>` works on
   it. A test checks it.

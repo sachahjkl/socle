@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="socle.css">
+<style>
+  .ch { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .ch:last-child { border-bottom: none; }
+  .ch .pg { width: 84px; color: var(--muted); font-size: 12.5px; flex: none; }
+  .ch .v { flex: 1; } .ch .v s { color: var(--faint); } .ch .v .to { color: var(--accent); }
+  .warn { display: flex; gap: 12px; padding: 12px 14px; border-radius: 8px; background: #2c2418; border: 1px solid #574126; margin-top: 14px; }
+  .warn .i { color: var(--orange); margin-top: 2px; }
+  .when { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .opt { border: 1px solid var(--line2); border-radius: 8px; padding: 11px 13px; }
+  .opt.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .opt b { display: block; font-weight: 600; } .opt span { color: var(--muted); font-size: 12.5px; }
+</style></head>
+<body data-page="desktop">
+<div class="body"><main class="main"><div class="content" style="opacity:.55">
+  <div class="head"><h1>Desktop</h1></div>
+</div></main></div>
+
+<div class="scrim"><div class="dialog">
+  <div class="dh"><h1 style="font-size:17px">Review the changes</h1></div>
+  <div class="db">
+    <div class="ch"><span class="pg">Desktop</span><div class="v">Environment: <s>GNOME</s> <span class="to">Plasma</span></div></div>
+    <div class="ch"><span class="pg">Desktop</span><div class="v">Log in by itself as <span class="to">Lou</span></div></div>
+    <div class="ch"><span class="pg">Apps</span><div class="v">Add <span class="to">OBS Studio</span> for everyone</div></div>
+    <div class="ch"><span class="pg">Apps</span><div class="v">Remove <span class="to">VLC</span>, which the template adds</div></div>
+
+    <div class="warn"><i class="i">&#xe193;</i><div><b>The session restarts</b>
+      <div class="muted" style="font-size:12.5px">A new desktop environment closes the open apps. Save your work first, or apply at the next start.</div></div></div>
+
+    <div class="when">
+      <div class="opt"><b>Now</b><span>Try it for 60 seconds, then keep it or go back.</span></div>
+      <div class="opt on"><b>At the next start</b><span>Prepare it now; it runs after a restart.</span></div>
+    </div>
+  </div>
+  <div class="df"><span class="muted" style="margin-right:auto;font-size:12.5px">About 640 MB to download</span>
+    <span class="btn ghost">Back</span><span class="btn primary">Prepare and apply</span></div>
+</div></div>
+<script src="shell.js"></script>
+</body></html>

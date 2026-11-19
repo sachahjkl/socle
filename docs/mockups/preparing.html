@@ -1,0 +1,49 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="socle.css">
+<style>
+  .log { margin-top: 14px; padding: 12px 14px; height: 380px; overflow: hidden; background: #121211; border: 1px solid var(--line);
+    border-radius: 8px; line-height: 1.75; color: var(--muted); }
+  .log .ok { color: var(--green); } .log .run { color: var(--accent); }
+  .stages { display: flex; gap: 6px; align-items: center; margin-top: 18px; }
+  .stage { display: flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 14px; border: 1px solid var(--line2); color: var(--muted); }
+  .stage.done { color: var(--green); border-color: #3c4d37; }
+  .stage.now { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .stages .sep { color: var(--faint); }
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .nums .card { padding: 13px 15px; } .nums b { font-size: 20px; font-weight: 650; display: block; } .nums span { color: var(--muted); font-size: 12.5px; }
+</style></head>
+<body data-page="">
+<div class="body"><main class="main"><div class="content">
+
+  <div class="head"><h1>Applying 4 changes</h1><span class="sub">The other pages stay open meanwhile.</span>
+    <div class="right"><span class="btn">Cancel</span></div></div>
+
+  <div class="stages">
+    <span class="stage done"><i class="i">&#xe06c;</i>Checked</span><span class="sep">›</span>
+    <span class="stage done"><i class="i">&#xe06c;</i>Reviewed</span><span class="sep">›</span>
+    <span class="stage now"><i class="i">&#xe109;</i>Preparing</span><span class="sep">›</span>
+    <span class="stage">Ready for the next start</span>
+  </div>
+
+  <div class="nums">
+    <div class="card"><b>412 of 640 MB</b><span>Downloaded, 18 MB/s</span><div class="progress" style="margin-top:9px"><i style="width:64%"></i></div></div>
+    <div class="card"><b>37 of 52</b><span>Parts ready</span><div class="progress" style="margin-top:9px"><i style="width:71%"></i></div></div>
+    <div class="card"><b>About 1 minute</b><span>Left</span></div>
+  </div>
+
+  <div class="log mono">
+    <div><span class="ok">✓</span> kwin-6.5.3</div>
+    <div><span class="ok">✓</span> plasma-workspace-6.5.3</div>
+    <div><span class="ok">✓</span> obs-studio-32.0.2</div>
+    <div><span class="ok">✓</span> sddm-0.21.0</div>
+    <div><span class="run">↓</span> kdenlive-25.08.3 <span class="faint">88 of 140 MB</span></div>
+    <div><span class="run">↓</span> qt6-qtwebengine-6.10.1 <span class="faint">204 of 310 MB</span></div>
+    <div><span class="run">⚙</span> system-path <span class="faint">building</span></div>
+    <div class="faint">· etc</div>
+    <div class="faint">· nixos-system-house-laptop-26.05</div>
+  </div>
+
+</div>
+</main></div>
+<script src="shell.js"></script>
+</body></html>

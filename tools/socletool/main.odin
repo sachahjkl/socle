@@ -23,6 +23,7 @@ project :: proc() -> toolbox.Project {
 commands :: proc() -> []toolbox.Command {
 	list := make([dynamic]toolbox.Command, context.temp_allocator)
 	append(&list, changelog.command(project()))
+	append(&list, toolbox.Command{name = "mockups", usage = "[names]  docs/mockups/*.html drawn to PNG by a headless Chromium", run = mockups_run})
 	return list[:]
 }
 

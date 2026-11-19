@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="socle.css">
+<style>
+  .envs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 4px; }
+  .env { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #1f1f1d; }
+  .env.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .env .shot { height: 96px; }
+  .env .t { padding: 9px 11px; display: flex; align-items: center; gap: 8px; }
+  .env .t b { font-weight: 600; } .env .t span { margin-left: auto; }
+  .rows .row { padding: 13px 16px; }
+  .from { font-size: 12px; color: var(--faint); }
+  .reset { font-size: 12px; color: var(--accent); }
+  .help { border-left: 2px solid var(--line2); padding: 2px 0 2px 12px; color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+</style></head>
+<body data-page="desktop">
+<div class="body"><main class="main"><div class="content">
+
+  <div class="head"><h1>Desktop</h1><span class="sub">What people see after they log in.</span></div>
+
+  <h2>Environment</h2>
+  <div class="envs">
+    <div class="env on">
+      <div class="shot" style="background:linear-gradient(135deg,#1d3557,#457b9d 60%,#a8dadc)">
+        <div class="w" style="left:14px;top:14px;width:90px;height:56px"></div>
+        <div class="w dark" style="left:70px;top:30px;width:100px;height:50px"></div><div class="tb"></div></div>
+      <div class="t"><span class="dot" style="margin:0"></span><b>Plasma</b></div>
+    </div>
+    <div class="env">
+      <div class="shot" style="background:linear-gradient(160deg,#3b2f4a,#7a5c8e)">
+        <div class="tb" style="top:0;height:9px;bottom:auto"></div>
+        <div class="w" style="left:40px;top:22px;width:120px;height:62px"></div></div>
+      <div class="t"><b>GNOME</b><span class="from">The template's</span></div>
+    </div>
+    <div class="env">
+      <div class="shot" style="background:linear-gradient(135deg,#2b2b2b,#4f3b2b)">
+        <div class="w dark" style="left:12px;top:12px;width:78px;height:70px"></div>
+        <div class="w dark" style="left:96px;top:12px;width:78px;height:70px"></div><div class="tb" style="top:0;height:8px"></div></div>
+      <div class="t"><b>COSMIC</b></div>
+    </div>
+    <div class="env">
+      <div class="shot" style="background:#101010;display:grid;place-items:center;color:#555" class="mono"><span class="mono">login:</span></div>
+      <div class="t"><b>None</b><span class="from">A server</span></div>
+    </div>
+  </div>
+  <div style="margin-top:10px"><span class="reset"><i class="i">&#xe148;</i> Back to the template</span></div>
+
+  <h2>Session</h2>
+  <div class="card rows">
+    <div class="row"><div class="label"><b>Dark look</b><span>Windows, menus and panels in dark colours.</span></div><span class="switch on"></span></div>
+    <div class="row"><div class="label"><b>Log in by itself <span class="dot"></span></b><span>Opens the session of one person at start, with no password.</span></div>
+      <div class="field" style="width:150px">Lou<i class="i faint" style="margin-left:auto">&#xe06f;</i></div><span class="switch on"></span></div>
+    <div class="row"><div class="label"><b>Screen lock</b><span>Locks the session after the screen goes off.</span></div>
+      <div class="field" style="width:150px">After 5 minutes<i class="i faint" style="margin-left:auto">&#xe06f;</i></div></div>
+    <div class="row"><div class="label"><b>Keyboard layout</b><span>The layouts that the desktop offers, the first one by default.</span></div>
+      <span class="tag">French (AZERTY)</span><span class="tag">English (US)</span><span class="btn small ghost"><i class="i">&#xe13d;</i></span></div>
+  </div>
+  <div class="help">Changing the environment restarts the session. socle proposes to apply it at the next start.</div>
+
+</div>
+<div class="bar"><span class="dot"></span><span class="what">4 changes</span>
+  <div class="right"><span class="btn ghost">Discard</span><span class="btn primary">Review and apply</span></div></div>
+</main></div>
+<script src="shell.js"></script>
+</body></html>

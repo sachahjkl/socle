@@ -1,0 +1,61 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="socle.css">
+<style>
+  .wrap { flex: 1; display: grid; grid-template-columns: 250px 1fr; }
+  .steps { background: var(--side); border-right: 1px solid var(--line); padding: 28px 18px; }
+  .steps .s { display: flex; gap: 12px; align-items: center; padding: 9px 8px; color: var(--muted); }
+  .steps .s i.n { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line2); display: grid; place-items: center;
+    font-style: normal; font-size: 12px; }
+  .steps .s.done { color: var(--text); } .steps .s.done i.n { background: #26301f; border-color: #3c4d37; color: var(--green); }
+  .steps .s.on { color: var(--text); font-weight: 600; } .steps .s.on i.n { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .pane { padding: 34px 44px; display: flex; flex-direction: column; }
+  .disks { display: grid; gap: 10px; margin-top: 20px; }
+  .disk { display: flex; gap: 14px; align-items: center; padding: 14px 16px; }
+  .disk.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .disk b { font-weight: 600; } .disk span { color: var(--muted); font-size: 12.5px; display: block; }
+  .parts { display: flex; height: 8px; border-radius: 4px; overflow: hidden; width: 220px; margin-left: auto; }
+  .foot { margin-top: auto; display: flex; gap: 8px; justify-content: flex-end; }
+</style></head>
+<body data-page="" data-side="none">
+<div class="body"><div class="wrap">
+  <div class="steps">
+    <div style="font-size:17px;font-weight:650;padding:0 8px 18px">Install socle</div>
+    <div class="s done"><i class="n">✓</i>Language and keyboard</div>
+    <div class="s on"><i class="n">2</i>Disk</div>
+    <div class="s"><i class="n">3</i>Person</div>
+    <div class="s"><i class="n">4</i>Template</div>
+    <div class="s"><i class="n">5</i>Review</div>
+    <div class="s"><i class="n">6</i>Install</div>
+  </div>
+  <div class="pane">
+    <h1>Where does the system go?</h1>
+    <div class="muted" style="margin-top:4px">The disk you choose is erased. Its files cannot come back.</div>
+
+    <div class="disks">
+      <div class="card disk on">
+        <div class="ico" style="background:#2b2620"><i class="i">&#xe0ed;</i></div>
+        <div><b>Samsung SSD 990 PRO</b><span>2 TB · NVMe · Windows 11, 2 partitions</span></div>
+        <div class="parts"><i style="width:3%;background:#82a9cc"></i><i style="width:62%;background:#5d7a99"></i><i style="flex:1;background:#33302b"></i></div>
+      </div>
+      <div class="card disk">
+        <div class="ico" style="background:#2b2620"><i class="i">&#xe0ed;</i></div>
+        <div><b>WD Blue SN580</b><span>1 TB · NVMe · empty</span></div>
+        <div class="parts"><i style="flex:1;background:#33302b"></i></div>
+      </div>
+      <div class="card disk">
+        <div class="ico" style="background:#2b2620"><i class="i">&#xe0ed;</i></div>
+        <div><b>SanDisk Ultra</b><span>64 GB · USB · the live image you started from</span></div>
+        <span class="pill" style="margin-left:auto">Not available</span>
+      </div>
+    </div>
+
+    <h2>Protection</h2>
+    <div class="card rows">
+      <div class="row"><div class="label"><b>Encrypt the disk</b><span>A password at each start. A stolen laptop shows nothing.</span></div><span class="switch on"></span></div>
+    </div>
+
+    <div class="foot"><span class="btn ghost"><i class="i">&#xe048;</i>Back</span><span class="btn primary">Next<i class="i">&#xe049;</i></span></div>
+  </div>
+</div></div>
+<script src="shell.js"></script>
+</body></html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="socle.css">
+<style>
+  .split { display: grid; grid-template-columns: 400px 1fr; gap: 0; height: 100%; }
+  .list { border-right: 1px solid var(--line); padding: 18px 0 0; display: flex; flex-direction: column; }
+  .list .field { margin: 0 18px 10px; }
+  .opt { padding: 8px 18px; border-bottom: 1px solid var(--line); }
+  .opt b { font-weight: 500; font-size: 12.5px; } .opt span { display: block; color: var(--muted); font-size: 12px; }
+  .opt.on { background: var(--sel); }
+  .detail { padding: 20px 26px; }
+  .path { color: var(--accent); }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 8px 14px; margin-top: 16px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  .layers { margin-top: 8px; }
+  .layer { display: flex; gap: 12px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line); }
+  .layer:last-child { border-bottom: none; }
+  .layer .w { width: 160px; flex: none; } .layer .v { flex: 1; }
+  .layer.win { background: #24221e; }
+  .layer.lost .v { color: var(--faint); text-decoration: line-through; }
+  .desc { color: var(--muted); margin-top: 10px; max-width: 640px; }
+</style></head>
+<body data-page="all">
+<div class="body"><main class="main"><div class="split">
+
+  <div class="list">
+    <div class="field"><i class="i muted">&#xe151;</i>printing<span class="faint" style="margin-left:auto;font-size:12px">48 of 21 304</span></div>
+    <div class="opt on"><b class="mono">services.printing.enable</b><span>Whether to enable printing support through the CUPS daemon.</span></div>
+    <div class="opt"><b class="mono">services.printing.drivers</b><span>CUPS drivers to use.</span></div>
+    <div class="opt"><b class="mono">services.printing.browsing</b><span>Advertise shared printers.</span></div>
+    <div class="opt"><b class="mono">services.printing.defaultShared</b><span>Whether local printers are shared by default.</span></div>
+    <div class="opt"><b class="mono">services.printing.listenAddresses</b><span>A list of addresses and ports on which to listen.</span></div>
+    <div class="opt"><b class="mono">services.printing.webInterface</b><span>Whether the web interface is enabled.</span></div>
+    <div class="opt"><b class="mono">hardware.printers.ensurePrinters</b><span>Declares the printers that must exist.</span></div>
+    <div class="opt"><b class="mono">socle.printing.printers</b><span>The printers of this machine, found on the network.</span></div>
+    <div class="opt"><b class="mono">services.ipp-usb.enable</b><span>Enable IPP over USB for printers and scanners.</span></div>
+  </div>
+
+  <div class="detail">
+    <div class="head"><h1 class="mono" style="font-size:17px">services.printing.enable</h1></div>
+    <div class="desc">Whether to enable printing support through the CUPS daemon.</div>
+
+    <dl class="kv">
+      <dt>Type</dt><dd>boolean</dd>
+      <dt>Default</dt><dd>off</dd>
+      <dt>Value</dt><dd><span class="switch on" style="display:inline-block;vertical-align:-5px"></span></dd>
+    </dl>
+
+    <h2>Who sets it</h2>
+    <div class="card layers">
+      <div class="layer win"><span class="w">You</span><span class="v">on</span><span class="pill green">Wins</span><span class="btn small ghost">Remove</span></div>
+      <div class="layer lost"><span class="w">Family desktop</span><span class="v">on</span><span class="faint" style="font-size:12px">template, priority 95</span></div>
+      <div class="layer lost"><span class="w">NixOS</span><span class="v">off</span><span class="faint" style="font-size:12px">the default</span></div>
+    </div>
+
+    <h2>Declared in</h2>
+    <div class="mono muted">nixos/modules/services/printing/cupsd.nix</div>
+  </div>
+
+</div></main></div>
+<script src="shell.js"></script>
+</body></html>
