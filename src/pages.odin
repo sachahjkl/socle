@@ -831,10 +831,13 @@ option_detail :: proc(app: ^App, em: f32) {
 		}
 	}
 	section("Who sets it", em)
+	machine := layer_get(app.machine, steps(path))
 	if ui.list_card("###layers") {
-		layer_row("you", "You", mine, mine != nil, em)
-		layer_row("template", app.info.template_title != "" ? app.info.template_title : "The template", tpl, mine == nil && tpl != nil, em)
-		layer_row("nixos", "NixOS and its modules", known ? f.default : json.Value(json.String(entry.version)), mine == nil && tpl == nil, em)
+		// (the machine's layer is above the person's: configuration.md, "The layers")
+		layer_row("machine", "This machine", machine, machine != nil, em)
+		layer_row("you", "You", mine, machine == nil && mine != nil, em)
+		layer_row("template", app.info.template_title != "" ? app.info.template_title : "The template", tpl, machine == nil && mine == nil && tpl != nil, em)
+		layer_row("nixos", "NixOS and its modules", known ? f.default : json.Value(json.String(entry.version)), machine == nil && mine == nil && tpl == nil, em)
 	}
 }
 

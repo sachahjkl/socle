@@ -290,6 +290,8 @@ layer_set_template :: proc(l: ^Layer, ref: string) {
 // facts).
 value_at :: proc(app: ^App, path: string) -> json.Value {
 	p := steps(path)
+	// (the machine's layer wins over the person's: configuration.md, "The layers")
+	if v := layer_get(app.machine, p); v != nil { return v }
 	if v := layer_get(app.draft, p); v != nil { return v }
 	if app.info == nil { return nil }
 	if p[0] == "socle" { return at(app.info.effective, p[1:]) }

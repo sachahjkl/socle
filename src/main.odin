@@ -45,6 +45,7 @@ App :: struct {
 	info:        ^Info,
 	draft:       Layer,
 	committed:   Layer,
+	machine:     Layer,   // this machine's layer: read only
 	changes:     [dynamic]Change,
 	lock_now:    map[string]i64,
 	lock_committed: map[string]i64,
@@ -169,6 +170,7 @@ close :: proc(app: ^App) {
 	generations_destroy(&app.generations)
 	layer_destroy(&app.draft)
 	layer_destroy(&app.committed)
+	layer_destroy(&app.machine)
 	info_destroy(app.info)
 	ui.line_edit_destroy(&app.search)
 	ui.line_edit_destroy(&app.options_search)

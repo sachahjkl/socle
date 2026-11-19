@@ -25,5 +25,8 @@ demo_run :: proc(args: []string) -> cli.Exit {
 	layer, rerr := os.read_entire_file_from_path("tests/demo/socle/system.json", context.temp_allocator)
 	if rerr != nil || os.write_entire_file(DEMO_LAYER_OUT, layer) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", DEMO_LAYER_OUT)) }
 	fmt.printfln("wrote %s", DEMO_LAYER_OUT)
+	machine, merr := os.read_entire_file_from_path("tests/demo/socle/hosts/house-laptop.json", context.temp_allocator)
+	if merr != nil || os.write_entire_file("src/demo/host.json", machine) != nil { return toolbox.done("src/demo/host.json cannot be written") }
+	fmt.println("wrote src/demo/host.json")
 	return .Done
 }

@@ -21,6 +21,7 @@ import "gt:ui"
 
 DEMO_INFO   :: #load("demo/info.json", string)
 DEMO_LAYER  :: #load("demo/system.json", string)
+DEMO_MACHINE :: #load("demo/host.json", string)
 DEMO_HOST   :: "house-laptop"
 DEFAULT_FOLDER :: "/etc/socle"
 PROFILES    :: "/nix/var/nix/profiles"
@@ -56,6 +57,7 @@ Loaded :: struct {
 	host:           string,
 	info:           ^Info,
 	draft, committed: string,
+	machine:        string,   // the machine's layer (socle/hosts/<host>.json): read only, its values shown as "this machine"
 	lock_now, lock_committed: map[string]i64,
 	generations:    [dynamic]Generation,
 }
@@ -79,6 +81,7 @@ load_work :: proc(data: rawptr) {
 	if l.host == "" { l.state, l.why = .Failed, strings.clone("socle/hosts holds no machine"); return }
 	l.draft = read_text(join(folder, "socle", "system.json"))
 	l.committed = git_show(folder, "HEAD:socle/system.json")
+	l.machine = read_text(join(folder, "socle", "hosts", fmt.tprintf("%s.json", l.host)))
 	l.lock_now = lock_dates(read_text(join(folder, "flake.lock")))
 	l.lock_committed = lock_dates(git_show(folder, "HEAD:flake.lock"))
 	text, why := evaluate(folder, l.host)
@@ -107,6 +110,8 @@ load_done :: proc(data: rawptr, _: u64) {
 		layer_destroy(&app.committed)
 		app.draft = layer_parse(l.draft)
 		app.committed = layer_parse(l.committed)
+		layer_destroy(&app.machine)
+		app.machine = layer_parse(l.machine)
 		delete(app.lock_now); delete(app.lock_committed)
 		app.lock_now, app.lock_committed = l.lock_now, l.lock_committed
 		generations_destroy(&app.generations)
@@ -115,6 +120,7 @@ load_done :: proc(data: rawptr, _: u64) {
 	}
 	delete(l.draft)
 	delete(l.committed)
+	delete(l.machine)
 	free(l)
 	host_settle(app)
 }
@@ -402,6 +408,8 @@ demo_load :: proc(app: ^App) {
 	layer_destroy(&app.committed)
 	app.draft = layer_parse(DEMO_LAYER)
 	app.committed = layer_parse(DEMO_LAYER)
+	layer_destroy(&app.machine)
+	app.machine = layer_parse(DEMO_MACHINE)
 	delete(app.host)
 	app.host = strings.clone(DEMO_HOST)
 	app.load = .Ready
