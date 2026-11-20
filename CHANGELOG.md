@@ -3,6 +3,16 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.5.0] - 2026-11-20 06:30
+
+### Added
+- **Your own templates**: Templates saves the applied system as a template, without its people or their accounts, in a git repository of its own that you can push anywhere; a link such as github:owner/repository#name starts a system from someone's template. The gallery shows every template of your sources, and says when one runs its own Nix.
+
+### Fixed
+- **Taking a machine over and installing work where git signs commits**: socle's own commits are never signed, so a signing key that root or the session does not have no longer stops them.
+- **Discard undoes everything**: it also brings back the sources and the template links of the last applied version.
+- **Notes and warnings read on one line**: the mark of a warning stands beside its title, not on a line of its own.
+
 ## [0.4.0] - 2026-11-19 21:37
 
 ### Added
@@ -38,6 +48,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.5.0]: https://github.com/sachahjkl/socle/releases/tag/v0.5.0
 [0.4.0]: https://github.com/sachahjkl/socle/releases/tag/v0.4.0
 [0.3.0]: https://github.com/sachahjkl/socle/releases/tag/v0.3.0
 [0.2.0]: https://github.com/sachahjkl/socle/releases/tag/v0.2.0
