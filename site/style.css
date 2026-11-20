@@ -62,11 +62,29 @@ em { font-style: normal; color: var(--accent); }
 
 main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 
-.hero { text-align: center; padding: 72px 0 40px; }
-.hero .mark { filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.6)); }
-.hero h1 { font: 700 clamp(2.2rem, 6vw, 3.6rem) var(--mono); margin: 18px 0 8px; letter-spacing: -0.02em; }
-.lead { max-width: 640px; margin: 0 auto 28px; color: var(--weak); font-size: 1.12rem; }
-.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-bottom: 14px; }
+/* the hero, as a technical page has it: the mark beside the name, the command to copy, the ways in; little height */
+.hero { padding: 36px 0 24px; }
+.hero-title { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+.hero .mark { flex: none; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6)); }
+.hero h1 { font: 700 clamp(1.8rem, 5vw, 2.4rem) var(--mono); margin: 0 0 2px; letter-spacing: -0.02em; line-height: 1.1; }
+.lead { margin: 0; color: var(--weak); font-size: 1.05rem; }
+.hero .small { margin: 8px 0 14px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions .btn { padding: 7px 14px; font-size: 0.93rem; }
+/* a command to copy: its text in the mono face, the button at its end */
+.cmd {
+  display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 6px 6px 6px 14px; border-radius: 8px;
+  background: #080808; border: 1px solid #000; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.85), 0 1px 0 var(--lip);
+}
+/* (one line, never cut inside a flag: a long one scrolls in its own frame) */
+.cmd code { flex: 1; min-width: 0; padding: 2px 0; background: none; font-size: 0.95rem; white-space: nowrap; overflow-x: auto; overflow-wrap: normal; scrollbar-width: thin; }
+.cmd code::before { content: "$ "; color: var(--faint); }
+.copy {
+  flex: none; padding: 4px 10px; border-radius: 6px; color: var(--text); font: 600 0.8rem var(--sans); cursor: pointer;
+  background: linear-gradient(#333, #222); border: 1px solid var(--edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.copy:hover { background: linear-gradient(#3a3a3a, #262626); }
+.hero > .cmd { max-width: 560px; }
 
 /* machined buttons: a bevel (light along the top, dark along the bottom), sunk when pressed */
 .btn {
@@ -82,8 +100,6 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 .film { margin: 8px 0 64px; }
 .film video { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid #000; background: #000;
   box-shadow: 0 0 0 1px var(--lip), 0 16px 40px rgba(0, 0, 0, 0.55); }
-.status { display: inline-block; margin-bottom: 10px; padding: 3px 14px; border-radius: 14px; font-size: 0.85rem;
-  color: var(--cyan); border: 1px solid #2f4a70; background: rgba(126, 186, 228, 0.06); }
 /* the download: the system's logo, what it gets, under it the file (version, system, architecture, kind); larger than the other
    buttons, its glow the accent's, lifted under the pointer */
 .actions { align-items: center; }
@@ -113,9 +129,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
   box-shadow: 0 0 0 1px var(--lip), 0 16px 40px rgba(0, 0, 0, 0.55);
 }
 .shot figcaption { color: var(--faint); font-size: 0.85rem; text-align: center; margin-top: 10px; }
-.shot.wide { margin: 8px 0 64px; }
+.shot.wide { margin: 0 0 28px; }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 64px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 36px; }
 .card {
   padding: 18px 20px; border-radius: 10px; background: linear-gradient(var(--bg3), var(--bg2));
   border: 1px solid var(--edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -127,8 +143,13 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 
 .download { text-align: center; margin-bottom: 72px; }
 .download h2 { font: 700 1.6rem var(--mono); }
-/* the four ways to start: two by two, one by one on a phone */
-.download .cols { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+/* the four ways in: two by two, one by one on a phone; each its line, its command, its guide */
+.download .ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 12px; text-align: left; }
+.ways .well { padding: 12px 14px; }
+.ways .well h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ways .well h3 a { font: 500 0.82rem var(--sans); }
+.ways .well p { margin: 0 0 8px; font-size: 0.9rem; }
+#download { margin-bottom: 36px; }
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; text-align: left; margin-bottom: 24px; }
 /* a sunken well: darker face, the shadow of its rim from above, a lit lip under it */
 .well {
@@ -199,7 +220,7 @@ footer .small span, footer .small a { white-space: nowrap; }
   .bar nav a.nav-buy, .bar nav a.nav-buy:hover { margin: 8px 0 4px; padding: 10px 14px; text-align: center; font-size: 1rem; }
 }
 @media (max-width: 600px) {
-  .hero { padding-top: 48px; }
+  .hero { padding-top: 20px; }
   .gallery { grid-template-columns: 1fr; }
 }
 

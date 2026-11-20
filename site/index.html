@@ -17,53 +17,51 @@
 
 <main>
   <section class="hero">
-    <img class="mark" src="img/logo.png" alt="Socle logo" width="128" height="128">
-    <h1>Socle</h1>
-    <p class="lead">Your whole system in one window: start from a ready-made system, change any setting, go back in one step.</p>
-    <span class="status">Early: it installs and runs real NixOS systems</span>
-    <div class="actions">
-      <a class="btn accent" href="docs/getting-started/">Get started</a>
-      <a class="btn" href="docs/install/">Install a computer</a>
-      <a class="btn" href="docs/">Documentation</a>
+    <div class="hero-title">
+      <img class="mark" src="img/logo.png" alt="Socle logo" width="64" height="64">
+      <div>
+        <h1>Socle</h1>
+        <p class="lead">Your whole system in one window: start from a ready-made system, change any setting, go back in one step.</p>
+      </div>
     </div>
-    <p class="small">For NixOS, and for Nix on any other Linux &nbsp;·&nbsp; MIT</p>
+    <div class="cmd"><code>nix run github:sachahjkl/socle</code><button type="button" class="copy" data-copy="nix run github:sachahjkl/socle">Copy</button></div>
+    <p class="small">On NixOS it runs the whole machine; on any other Linux with Nix, your home. Nix with flakes &nbsp;·&nbsp; MIT</p>
+    <div class="actions">
+      <a class="btn accent" href="docs/getting-started/">Getting started</a>
+      <a class="btn" href="docs/install/">Install a computer</a>
+      <a class="btn" href="https://github.com/sachahjkl/socle/releases/latest">Images</a>
+    </div>
+  </section>
+
+  <section id="download" class="download">
+    <div class="ways">
+      <div class="well">
+        <h3>Try it in a virtual machine <a href="docs/getting-started/">guide</a></h3>
+        <p>A NixOS that Socle manages. Changes are real, inside the machine. Needs KVM.</p>
+        <div class="cmd"><code>nix run github:sachahjkl/socle#vm</code><button type="button" class="copy" data-copy="nix run github:sachahjkl/socle#vm">Copy</button></div>
+      </div>
+      <div class="well">
+        <h3>Install a computer <a href="docs/install/">guide</a></h3>
+        <p>The <a href="https://github.com/sachahjkl/socle/releases/latest">Desktop image</a> on a USB stick. One whole disk, UEFI, the network.</p>
+        <div class="cmd"><code>sudo dd if=socle-*-desktop-x86_64-linux.iso of=/dev/sdX bs=4M conv=fsync</code><button type="button" class="copy" data-copy="sudo dd if=socle-*-desktop-x86_64-linux.iso of=/dev/sdX bs=4M conv=fsync">Copy</button></div>
+      </div>
+      <div class="well">
+        <h3>Take over your NixOS <a href="docs/take-over/">guide</a></h3>
+        <p>From a template; keeps hardware, boot loader and accounts. Nothing changes until you apply.</p>
+        <div class="cmd"><code>nix run github:sachahjkl/socle</code><button type="button" class="copy" data-copy="nix run github:sachahjkl/socle">Copy</button></div>
+      </div>
+      <div class="well">
+        <h3>A home on any Linux <a href="docs/home/">guide</a></h3>
+        <p>Your apps, shell and tools through Home Manager. No administrator needed.</p>
+        <div class="cmd"><code>nix run github:sachahjkl/socle -- --home</code><button type="button" class="copy" data-copy="nix run github:sachahjkl/socle -- --home">Copy</button></div>
+      </div>
+    </div>
   </section>
 
   <figure class="shot wide">
     <a class="frame" href="img/overview.png"><img src="img/overview.png" alt="The overview: the running version, its updates, its pages, the recent changes" loading="lazy"></a>
     <figcaption>The overview: what runs, what waits, what changed.</figcaption>
   </figure>
-
-  <section id="download" class="download">
-    <h2>Get started</h2>
-    <div class="cols">
-      <div class="well">
-        <h3>Try it in a virtual machine</h3>
-        <p>A NixOS that Socle manages, on your Linux with Nix and KVM. Every change you apply is real, and stays inside
-          the machine. <a href="docs/getting-started/">The first ten minutes</a>.</p>
-        <code>nix run github:sachahjkl/socle#vm</code>
-      </div>
-      <div class="well">
-        <h3>Install a computer</h3>
-        <p>Write the Desktop image of the <a href="https://github.com/sachahjkl/socle/releases/latest">latest release</a>
-          to a USB stick and start the computer from it. It takes one whole disk, UEFI and the network.
-          <a href="docs/install/">Step by step</a>.</p>
-        <code>sudo dd if=socle-*-desktop-x86_64-linux.iso of=/dev/sdX bs=4M</code>
-      </div>
-      <div class="well">
-        <h3>Take over your NixOS</h3>
-        <p>Socle starts from a template, keeps your hardware, boot loader and accounts, and changes nothing until you
-          apply. <a href="docs/take-over/">What it keeps</a>.</p>
-        <code>nix run github:sachahjkl/socle</code>
-      </div>
-      <div class="well">
-        <h3>A home on any Linux</h3>
-        <p>Your own apps, shell and tools through Home Manager, with no administrator. On a Linux that is not NixOS,
-          the same command opens your home. <a href="docs/home/">How</a>.</p>
-        <code>nix run github:sachahjkl/socle</code>
-      </div>
-    </div>
-  </section>
 
   <section id="features" class="grid">
     <article class="card">
@@ -137,6 +135,10 @@
   bar.querySelectorAll('nav a').forEach(a => a.addEventListener('click', shut));
   document.addEventListener('click', e => { if (!bar.contains(e.target)) shut(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+  // a command's Copy button: the command to the clipboard, and the button says so for a moment
+  document.querySelectorAll('button.copy').forEach(b => b.addEventListener('click', () => {
+    navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1500); });
+  }));
 </script>
 <script src="gallery.js" defer></script>
 </body>
