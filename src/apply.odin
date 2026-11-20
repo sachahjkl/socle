@@ -6,6 +6,7 @@ package socle
 // real ones.
 
 import "core:fmt"
+import "core:math"
 import "core:os"
 import "core:strings"
 import "core:sync"
@@ -514,17 +515,25 @@ review_view :: proc(v: ^ui.View, app: ^App) {
 
 // A well with a mark, a title and a note: a warning in a dialog or a page.
 note_well :: proc(id, icon: string, hue: ui.Hue, title, note: string, em: f32) {
-	ui.next({width = ui.fill(), height = ui.children_sum(), axis = .X})
+	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.well(fmt.tprintf("###%s_well", id), pad = ui.INNER_PAD) {
-		ui.next({width = ui.px(em * 1.6), height = ui.px(em * 1.4), font = ui.lucide_icons(), fg = ui.hue(hue), text_pad = 0})
-		ui.build_box({.Draw_Text, .No_Text_Trunc}, fmt.tprintf("%s###%s_icon", icon, id))
-		ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y})
-		if ui.column(id = fmt.tprintf("###%s_words", id)) {
-			ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0})
-			ui.label(fmt.tprintf("%s###%s_title", title, id))
-			if ui.tags("weak") {
+		// (a row of its own: the well lays its content in a column, which put the mark on a line alone)
+		ui.next({width = ui.fill(), height = ui.children_sum(), axis = .X})
+		if ui.row(id = fmt.tprintf("###%s_line", id)) {
+			// (as tall as the title's line: the mark stands beside the title, not beside the note)
+			ui.next({width = ui.px(math.round(em * 1.1)), height = ui.text_size(), font = ui.lucide_icons(), fg = ui.hue(hue), text_pad = 0, text_align = .Center})
+			ui.build_box({.Draw_Text, .No_Text_Trunc}, fmt.tprintf("%s###%s_icon", icon, id))
+			ui.spacer(ui.px(em * 0.6))
+			ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y})
+			if ui.column(id = fmt.tprintf("###%s_words", id)) {
 				ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0, flags = {.Text_Wrap}})
-				ui.label(fmt.tprintf("%s###%s_note", note, id))
+				ui.label(fmt.tprintf("%s###%s_title", title, id))
+				if note != "" {
+					if ui.tags("weak") {
+						ui.next({width = ui.fill(), height = ui.text_size(), text_pad = 0, flags = {.Text_Wrap}})
+						ui.label(fmt.tprintf("%s###%s_note", note, id))
+					}
+				}
 			}
 		}
 	}
