@@ -3,6 +3,15 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.6.0] - 2026-11-20 07:57
+
+### Added
+- **The documentation**: the site has a Docs section, with search: getting started in a virtual machine, installing a computer step by step, taking over a NixOS, a home on any Linux, everyday use, templates, the folder, every command, and what to do when something fails. The home page starts with the four ways in.
+
+### Fixed
+- **nix run github:sachahjkl/socle works**: the package no longer needs the toolkit as a git submodule, which a github: address does not fetch.
+- **An install that stops can start again**: the disk is unmounted and closed after a failure, so Back to the review and a new try work.
+
 ## [0.5.0] - 2026-11-20 06:30
 
 ### Added
@@ -48,6 +57,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.6.0]: https://github.com/sachahjkl/socle/releases/tag/v0.6.0
 [0.5.0]: https://github.com/sachahjkl/socle/releases/tag/v0.5.0
 [0.4.0]: https://github.com/sachahjkl/socle/releases/tag/v0.4.0
 [0.3.0]: https://github.com/sachahjkl/socle/releases/tag/v0.3.0
