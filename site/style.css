@@ -11,6 +11,7 @@
   --cyan: #9fc7ee;
   --edge: rgba(0, 0, 0, 0.85);
   --lip: rgba(255, 255, 255, 0.06);
+  --line: #2c3a55;   /* (the toolkit's scroll bar mixes its trough and thumb from it: gt:site, SCROLLBAR_CSS) */
   --mono: "Cascadia Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
   --sans: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
   color-scheme: dark;
@@ -76,8 +77,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
   display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 6px 6px 6px 14px; border-radius: 8px;
   background: #080808; border: 1px solid #000; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.85), 0 1px 0 var(--lip);
 }
-/* (one line, never cut inside a flag: a long one scrolls in its own frame) */
-.cmd code { flex: 1; min-width: 0; padding: 2px 0; background: none; font-size: 0.95rem; white-space: nowrap; overflow-x: auto; overflow-wrap: normal; scrollbar-width: thin; }
+/* (one line, never cut inside a flag: a long one scrolls in its own frame, with the toolkit's bar; scrollbar-width
+   would put the browser's own bar in its place) */
+.cmd code { flex: 1; min-width: 0; padding: 2px 0; background: none; font-size: 0.95rem; white-space: nowrap; overflow-x: auto; overflow-wrap: normal; }
 .cmd code::before { content: "$ "; color: var(--faint); }
 .copy {
   flex: none; padding: 4px 10px; border-radius: 6px; color: var(--text); font: 600 0.8rem var(--sans); cursor: pointer;
@@ -149,6 +151,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 .ways .well h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .ways .well h3 a { font: 500 0.82rem var(--sans); }
 .ways .well p { margin: 0 0 8px; font-size: 0.9rem; }
+.ways .cmd code { font-size: 0.86rem; }
 #download { margin-bottom: 36px; }
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; text-align: left; margin-bottom: 24px; }
 /* a sunken well: darker face, the shadow of its rim from above, a lit lip under it */
