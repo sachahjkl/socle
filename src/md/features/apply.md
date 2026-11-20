@@ -21,13 +21,28 @@ draft ─▶ evaluate ─▶ review ─▶ build ─▶ try ─▶ keep ─▶ r
 2. **Review.** The changes in words, grouped by page. A change that restarts the session (a new desktop, a new graphics
    driver, a new kernel) is marked: socle proposes "At the next start" in place of "Now".
 3. **Build.** `nix build --log-format internal-json`, as the person, through the Nix daemon. The progress shows what is
-   downloaded and what is built, with sizes. "Cancel" stops the process; nothing changes.
+   downloaded and what is built, with sizes. "Cancel" stops the process; nothing changes. "Details" unfolds nix's own
+   lines above the bar (below).
 4. **Try.** The helper activates the new system without making it the default (`switch-to-configuration test`). The
    window asks "Keep this version?" with a countdown of 60 seconds.
 5. **Keep.** The helper makes the system the default for the next start (the profile and the boot entry).
 6. **Record.** socle commits the layers. The commit message is the review's summary.
 
 "At the next start" skips steps 4 and 5: the helper sets the profile and the boot entry, and nothing is activated now.
+
+## The build's details
+
+- The bar's one line says how far the build is. "Details" unfolds the lines behind it: what nix starts (a download, a
+  build), what a build prints, and nix's messages, as a terminal would show them. A person who waits on a long build
+  sees that it moves; a person whose build failed reads where.
+- The lines are the same log that makes the progress: no second `nix` process, no `nix log` afterwards.
+- The worker keeps the lines and posts them with the progress, ten times a second at most, then the rest at the end.
+  The window keeps the last `LOG_KEPT` lines: a build of the whole system prints millions, and nobody reads them all.
+- The view is a virtual list: a frame builds the lines in view, not the thousands kept. It follows the end until the
+  person scrolls up, and again once they scroll back to the end.
+- After a failure the lines stay until the next build: "Details" is still in the bar, beside the changes.
+- Refused: a log file (a path the person must open, and the disk at each line), and a panel always shown (the bar is
+  one line on purpose: window.md).
 
 ## Why try before keep
 

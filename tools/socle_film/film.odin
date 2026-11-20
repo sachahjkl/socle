@@ -282,14 +282,24 @@ script :: proc(t: ^Take) {
 	tap(t, "nav_Desktop", after = 0.7)
 	tap(t, "", "Plasma", after = 0.8)
 	tap(t, "login_toggle", after = 0.8)
+	// the screen lock: its delay on the wheels, then a part typed
+	tap(t, "lock_after", after = 0.7)
+	point(t, "drum1", glide = 0.4, after = 0.2)
+	film.wheel(r, {0, 1}, 0.25)
+	film.wheel(r, {0, 1}, 0.25)
+	film.wheel(r, {0, 1}, 0.25)
+	film.wheel(r, {0, 5}, 0.6)
+	film.hold(r, 0.9)
+	film.key(r, .Escape, after = 0.5)
 	point(t, "changes_count", after = 0.6)
 
 	// the review, now, on trial
 	tap(t, "changes_review", after = 1.4)
 	tap(t, "", "Now, on trial", after = 0.8)
 	tap(t, "review_go", after = 0.3)
-	film.pointer_show(r, true, film.center(film.box(r, "page_scroll"), {0.7, 0.6}))
-	film.hold(r, socle.DEMO_PREPARE_MS / 1000 + 0.3)
+	// the build's details, unfolded while it prepares
+	tap(t, "changes_details", glide = 0.5, after = 0.2)
+	film.hold(r, socle.DEMO_PREPARE_MS / 1000 - 0.5)
 
 	// the try: the countdown runs, then keep
 	film.hold(r, 2.6)

@@ -83,7 +83,10 @@ build :: proc(h: ^host.Host, size: host.Vec2) {
 						ui.spacer(ui.px(em * 1.8))
 					}
 				}
-				if ready { changes_bar(app, em) }
+				if ready {
+					build_log_panel(app, em)
+					changes_bar(app, em)
+				}
 			}
 		}
 	}
@@ -216,6 +219,7 @@ changes_bar :: proc(app: ^App, em: f32) {
 				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
 				ui.label(fmt.tprintf("%s###changes_numbers", progress_words(app, k)))
 			}
+			details_button(app, em)
 		case .Starting:
 			ui.button("###changes_busy", "Starting the new version", o = {face = .Ghost, busy = true})
 			ui.spacer(ui.fill())
@@ -245,6 +249,11 @@ changes_bar :: proc(app: ^App, em: f32) {
 				}
 			}
 			ui.spacer(ui.fill())
+			// (the lines of a build that failed stay to be read: apply.md, "The build's details")
+			if app.apply.failure != "" && len(app.apply.log.lines) > 0 {
+				details_button(app, em)
+				ui.spacer(ui.px(em * 0.5))
+			}
 			if ui.button("changes_discard", "Discard", o = {face = .Ghost}).clicked { draft_discard(app) }
 			ui.spacer(ui.px(em * 0.5))
 			if ui.button("changes_review", "Review and apply", lucide.ARROW_RIGHT, {intent = .Primary, disabled = len(app.changes) == 0}).clicked { review_open(app) }
@@ -274,6 +283,52 @@ draft_discard :: proc(app: ^App) {
 		delete(x.folder)
 		free(x)
 	}, new_clone(Discard{app = app, folder = strings.clone(app.folder)}), proc(d: rawptr) { free(d) })
+}
+
+// The build's lines unfolded above the bar, or folded.
+@(private = "file")
+details_button :: proc(app: ^App, em: f32) {
+	l := &app.apply.log
+	if ui.button("changes_details", "Details", l.open ? lucide.CHEVRON_DOWN : lucide.CHEVRON_UP, {face = .Ghost}).clicked { l.open = !l.open }
+}
+
+// The height of the build's lines unfolded, in ems, and the size of their text, of the font's.
+@(private = "file") LOG_HEIGHT_EM :: 14
+@(private = "file") LOG_TEXT :: 0.86
+
+// The build's lines (apply.md, "The build's details"): a virtual list of the lines kept, which follows the end until the
+// person scrolls up.
+@(private = "file")
+build_log_panel :: proc(app: ^App, em: f32) {
+	l := &app.apply.log
+	if !l.open { return }
+	if app.apply.stage != .Preparing && !(app.apply.stage == .Idle && app.apply.failure != "" && len(l.lines) > 0) { return }
+	// (sunk in a well: the page above and the bar below are not one surface with it)
+	ui.next({width = ui.fill(), height = ui.px(math.round(em * LOG_HEIGHT_EM)), axis = .Y, radius = 0, bg = ui.color("well")})
+	if ui.column(flags = {.Draw_Background, .Draw_Side_Top}, id = "###build_log_panel") {
+		// (at the end at the last layout, or never laid out: the new lines are followed)
+		at_end := true
+		view := em * LOG_HEIGHT_EM
+		if prev := ui.prev_box("###build_log"); prev != nil {
+			at_end = prev.view_target.y + prev.size.y >= prev.view_bounds.y - em
+			view = prev.size.y
+		}
+		size := math.round(em * LOG_TEXT)
+		ui.next({width = ui.fill(), height = ui.fill()})
+		if rows, ok := ui.vlist("###build_log", &l.vl, l.ids[:], ids_version = l.version); ok {
+			for i in rows.first ..< rows.last {
+				ui.next({width = ui.fill(), height = ui.px(math.round(size * 1.55)), font = ui.mono_font(), font_size = size, text_pad = math.round(em * 1.2)})
+				b := ui.build_box({.Draw_Text}, ui.vlist_row_name(i))
+				b.text = l.lines[i]
+			}
+		}
+		// (after the build: the list's height counts the new lines then. A place past the end is not clamped, and a view
+		// there builds no row)
+		if at_end && l.shown != l.version {
+			ui.vlist_scroll_to(&l.vl, max(0, ui.vlist_total(&l.vl) - view))
+			l.shown = l.version
+		}
+	}
 }
 
 progress_words :: proc(app: ^App, k: f32) -> string {

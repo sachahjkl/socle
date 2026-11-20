@@ -15,6 +15,32 @@ import lucide "gt:lucide"
 import "gt:ui"
 
 DEMO_PREPARE_MS :: 5200.0
+
+// What the demo's build says, in nix's words.
+@(private = "file", rodata)
+DEMO_LOG := [?]string{
+	"evaluating derivation 'path:/etc/socle#nixosConfigurations.house-laptop.config.system.build.toplevel'",
+	"these 12 derivations will be built:",
+	"  /nix/store/8f2k1v3m0q9x-firefox-145.0.drv",
+	"  /nix/store/3h7d0s2p5l1c-krita-5.2.9.drv",
+	"  /nix/store/q0w9e8r7t6y5-system-path.drv",
+	"  /nix/store/z1x2c3v4b5n6-nixos-system-house-laptop-26.05.drv",
+	"these 52 paths will be fetched (640.2 MiB download, 2.1 GiB unpacked):",
+	"copying path '/nix/store/0a9s8d7f6g5h-gtk4-4.18.2' from 'https://cache.nixos.org'",
+	"copying path '/nix/store/1q2w3e4r5t6y-mesa-25.1.4' from 'https://cache.nixos.org'",
+	"copying path '/nix/store/7u8i9o0p1a2s-libreoffice-25.2.4.2' from 'https://cache.nixos.org'",
+	"copying path '/nix/store/3d4f5g6h7j8k-vlc-3.0.21' from 'https://cache.nixos.org'",
+	"copying path '/nix/store/9l0z1x2c3v4b-audacity-3.7.4' from 'https://cache.nixos.org'",
+	"building '/nix/store/8f2k1v3m0q9x-firefox-145.0.drv'",
+	"firefox> unpacking source archive /nix/store/5n6m7q8w9e0r-firefox-145.0.source.tar.xz",
+	"firefox> patching sources",
+	"firefox> wrapping /nix/store/2t3y4u5i6o7p-firefox-145.0/bin/firefox",
+	"building '/nix/store/3h7d0s2p5l1c-krita-5.2.9.drv'",
+	"krita> wrapping Qt applications in /nix/store/8a9s0d1f2g3h-krita-5.2.9",
+	"building '/nix/store/q0w9e8r7t6y5-system-path.drv'",
+	"system-path> created 4312 symlinks in user environment",
+	"building '/nix/store/z1x2c3v4b5n6-nixos-system-house-laptop-26.05.drv'",
+}
 KEEP_MS         :: 60000.0
 
 REVIEW_VIEW :: "review"
@@ -89,6 +115,66 @@ Apply :: struct {
 	progress:   Progress,
 	failure:    string,  // why the last apply stopped ("": it did not)
 	back:       bool,    // a return to an earlier version: nothing to build or commit
+	log:        Build_Log,   // the last build's lines (kept from one apply to the next: apply_reset)
+}
+
+// The lines of the last build that the window keeps (apply.md, "The build's details"), and the lines dropped at once
+// when there are more: a drop is a copy of the rest, so it happens once in a while, not at each line.
+LOG_KEPT :: 4000
+@(private = "file") LOG_DROP :: 1000
+
+// The last build's lines, the person's to unfold (apply.md, "The build's details").
+Build_Log :: struct {
+	lines:   [dynamic]string,   // owned
+	ids:     [dynamic]u64,      // each line's identity in the list (its number since the build began)
+	next:    u64,
+	version: u64,               // moves with each change of the lines: the list's ids_version
+	shown:   u64,               // the version the view followed to its end
+	vl:      ui.Virtual_List,
+	open:    bool,
+}
+
+build_log_clear :: proc(l: ^Build_Log) {
+	for s in l.lines { delete(s) }
+	clear(&l.lines)
+	clear(&l.ids)
+	l.next = 0
+	l.version += 1
+}
+
+build_log_destroy :: proc(l: ^Build_Log) {
+	build_log_clear(l)
+	delete(l.lines)
+	delete(l.ids)
+	ui.vlist_destroy(&l.vl)
+}
+
+// Lines added at the end, the log's now; the oldest dropped past LOG_KEPT.
+build_log_add :: proc(l: ^Build_Log, lines: []string) {
+	if len(lines) == 0 { return }
+	for s in lines {
+		append(&l.lines, s)
+		append(&l.ids, l.next)
+		l.next += 1
+	}
+	if over := len(l.lines) - LOG_KEPT; over >= LOG_DROP {
+		for s in l.lines[:over] { delete(s) }
+		remove_range(&l.lines, 0, over)
+		remove_range(&l.ids, 0, over)
+	}
+	l.version += 1
+}
+
+// A new apply: its state from zero, the log's lines emptied but its place on screen kept.
+@(private = "file")
+apply_reset :: proc(app: ^App, a: Apply) {
+	delete(app.apply.failure)
+	delete(app.apply.summary)
+	delete(app.apply.path)
+	delete(app.apply.progress.doing)
+	log := app.apply.log
+	app.apply = a
+	app.apply.log = log
 }
 
 // What a build says of itself (nix's internal-json log).
@@ -114,10 +200,8 @@ apply_fraction :: proc(app: ^App) -> f32 {
 // The review accepted: the stage that prepares the new system.
 apply_start :: proc(app: ^App) {
 	if apply_busy(app) { return }
-	delete(app.apply.failure)
-	delete(app.apply.summary)
-	delete(app.apply.path)
-	app.apply = {stage = .Preparing, now = app.apply.now, started_ms = ui.now_ms(), summary = summary_of(app)}
+	apply_reset(app, {stage = .Preparing, now = app.apply.now, started_ms = ui.now_ms(), summary = summary_of(app)})
+	build_log_clear(&app.apply.log)
 	if app.source == .Demo { return }
 	ui.task(&app.main.state, build_work, build_done, new_clone(Build{app = app, folder = app.folder, host = app.host, target = app.target}), build_lost)
 }
@@ -149,10 +233,7 @@ home_activate :: proc(app: ^App, path: string) {
 // A return to an earlier version: the same try and keep, nothing built.
 apply_go_back :: proc(app: ^App, g: Generation) {
 	if apply_busy(app) || g.running { return }
-	delete(app.apply.failure)
-	delete(app.apply.summary)
-	delete(app.apply.path)
-	app.apply = {stage = .Starting, now = 0, started_ms = ui.now_ms(), back = true, path = strings.clone(g.path), summary = fmt.aprintf("Back to version %d", g.number)}
+	apply_reset(app, {stage = .Starting, now = 0, started_ms = ui.now_ms(), back = true, path = strings.clone(g.path), summary = fmt.aprintf("Back to version %d", g.number)})
 	if app.target == .Home { home_activate(app, g.path); return }
 	if app.source == .Demo { apply_try_started(app, ""); return }
 	helper_start(app, {"try", g.path})
@@ -173,7 +254,15 @@ apply_step :: proc(app: ^App) {
 	case .Idle, .Starting, .Finishing, .Freeing:
 	case .Preparing:
 		ui.keep_animating()
-		if app.source == .Demo && apply_fraction(app) >= 1 { apply_built(app, "/nix/store/demo-system") }
+		if app.source == .Demo {
+			// (the demo's lines come with its clock, as a build's would)
+			want := min(int(apply_fraction(app) * f32(len(DEMO_LOG))), len(DEMO_LOG))
+			for int(app.apply.log.next) < want {
+				line := [1]string{strings.clone(DEMO_LOG[app.apply.log.next])}
+				build_log_add(&app.apply.log, line[:])
+			}
+			if apply_fraction(app) >= 1 { apply_built(app, "/nix/store/demo-system") }
+		}
 	case .Trying:
 		ui.keep_animating()
 		if ui.now_ms() - app.apply.started_ms >= KEEP_MS {
@@ -279,6 +368,14 @@ Build :: struct {
 	target:       Target,
 	log:          Nix_Log,   // the worker's own
 	posted_ms:    f64,
+	rest:         []string,  // the lines said after the last post: the end's (build_done)
+}
+
+// What the worker posts: the progress and the lines since the last post, the window's to keep.
+@(private = "file")
+Build_Post :: struct {
+	progress: Progress,
+	lines:    []string,
 }
 
 @(private = "file")
@@ -288,6 +385,7 @@ build_work :: proc(data: rawptr) {
 	add := run({"git", "-C", b.folder, "add", "-A", "--", "socle", "custom", "flake.lock", "flake.nix"})
 	delete(add.stdout); delete(add.stderr)
 	nix_log_init(&b.log)
+	b.log.keep_lines = true
 	target := b.target == .Home ? fmt.tprintf("%s#homeConfigurations.\"%s\".activationPackage", b.folder, b.host) : fmt.tprintf("%s#nixosConfigurations.%s.config.system.build.toplevel", b.folder, b.host)
 	r := run_lines({"nix", "build", "--no-link", "--print-out-paths", "--no-warn-dirty", "--log-format", "internal-json", "-v", target}, "", build_line, b)
 	if r.ok {
@@ -297,6 +395,7 @@ build_work :: proc(data: rawptr) {
 		b.why = strings.clone(msg != "" ? msg : "nix build failed")
 	}
 	delete(r.stdout); delete(r.stderr)
+	b.rest = nix_log_take(&b.log)
 	nix_log_destroy(&b.log)
 }
 
@@ -308,24 +407,35 @@ build_line :: proc(user: rawptr, text: string) {
 	now := f64(time.tick_now()._nsec) / 1e6
 	if now - b.posted_ms > 100 {
 		b.posted_ms = now
-		p := new(Progress)
-		p^ = b.log.progress
-		p.doing = strings.clone(b.log.progress.doing)
-		if !ui.post(&b.app.main.state, progress_post, p) { delete(p.doing); free(p) }
+		p := new(Build_Post)
+		p.progress = b.log.progress
+		p.progress.doing = strings.clone(b.log.progress.doing)
+		p.lines = nix_log_take(&b.log)
+		if !ui.post(&b.app.main.state, progress_post, p) { build_post_free(p) }
 	}
 }
 
 @(private = "file")
+build_post_free :: proc(p: ^Build_Post) {
+	delete(p.progress.doing)
+	for s in p.lines { delete(s) }
+	delete(p.lines)
+	free(p)
+}
+
+@(private = "file")
 progress_post :: proc(data: rawptr, _: u64) {
-	p := (^Progress)(data)
+	p := (^Build_Post)(data)
 	app := the_app
 	if app != nil && app.apply.stage == .Preparing {
 		delete(app.apply.progress.doing)
-		app.apply.progress = p^
-	} else {
-		delete(p.doing)
+		app.apply.progress = p.progress
+		build_log_add(&app.apply.log, p.lines)
+		delete(p.lines)
+		free(p)
+		return
 	}
-	free(p)
+	build_post_free(p)
 }
 
 @(private = "file")
@@ -333,14 +443,23 @@ build_done :: proc(data: rawptr, _: u64) {
 	b := (^Build)(data)
 	app := b.app
 	if app.apply.stage == .Preparing {
+		build_log_add(&app.apply.log, b.rest)
 		if b.why != "" { apply_failed(app, b.why) } else { apply_built(app, b.path) }
+	} else {
+		for s in b.rest { delete(s) }
 	}
+	delete(b.rest)
 	delete(b.path); delete(b.why)
 	free(b)
 }
 
 @(private = "file")
-build_lost :: proc(data: rawptr) { free(data) }
+build_lost :: proc(data: rawptr) {
+	b := (^Build)(data)
+	for s in b.rest { delete(s) }
+	delete(b.rest)
+	free(b)
+}
 
 ////////////////////////////////
 // The helper (src/md/infrastructure/helper.md): `socle helper <verb>` through pkexec

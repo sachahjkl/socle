@@ -522,7 +522,7 @@ change_words :: proc(app: ^App, path: string, now: json.Value) -> (page: string,
 	case path == "socle.desktop.autoLogin.user":
 		return "Desktop", fmt.aprintf("Log in by itself as %s", person_title(app, str(shown))), false
 	case path == "socle.desktop.lockAfter":
-		return "Desktop", fmt.aprintf("Lock the screen: %s", lock_title(str(shown))), false
+		return "Desktop", fmt.aprintf("Lock the screen: %s", lock_title(int(num(shown)))), false
 	case strings.has_prefix(path, "socle.people."):
 		rest := path[len("socle.people."):]
 		login := rest[:strings.index_byte(rest, '.') if strings.index_byte(rest, '.') >= 0 else len(rest)]
@@ -588,13 +588,12 @@ desktop_title :: proc(id: string) -> string {
 	return id
 }
 
-lock_title :: proc(id: string) -> string {
-	switch id {
-	case "never": return "never"
-	case "5":     return "after 5 minutes"
-	case "15":    return "after 15 minutes"
-	}
-	return id
+// "never", "after 5 min", "after 1 h 30 min": a delay of the screen lock, in minutes.
+lock_title :: proc(minutes: int) -> string {
+	if minutes <= 0 { return "never" }
+	if minutes < 60 { return fmt.tprintf("after %d min", minutes) }
+	if minutes % 60 == 0 { return fmt.tprintf("after %d h", minutes / 60) }
+	return fmt.tprintf("after %d h %02d min", minutes / 60, minutes % 60)
 }
 
 app_name :: proc(app: ^App, attr: string) -> string {

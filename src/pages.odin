@@ -476,8 +476,8 @@ DESKTOP_ABOUT  := [?]string{
 	"System76's desktop: windows that tile by themselves, or float.",
 	"No desktop: a console, for a server.",
 }
-LOCK_IDS   := [?]string{"never", "5", "15"}
-LOCK_NAMES := [?]string{"Never", "5 minutes", "15 minutes"}
+// The screen lock's delay when it is turned on and neither the draft nor the template has one (minutes).
+LOCK_MINUTES :: 5
 
 desktop_page :: proc(app: ^App, em: f32) {
 	page_head("Desktop", "What people see after they log in.", em)
@@ -530,10 +530,20 @@ desktop_page :: proc(app: ^App, em: f32) {
 		}
 		if ui.card_row("###lock") {
 			setting_words("lock", "Screen lock", "Locks the session once the screen goes off.", changed(app, "socle.desktop.lockAfter"), em)
-			lock := text_at(app, "socle.desktop.lockAfter")
-			v := 0
-			for id, i in LOCK_IDS { if id == lock { v = i } }
-			if ui.segmented("###lock", LOCK_NAMES[:], &v) { set_text(app, "socle.desktop.lockAfter", LOCK_IDS[v]) }
+			// (a delay of 0 is "never": the switch turns it off, the field sets the delay while it is on)
+			minutes := int(num(value_at(app, "socle.desktop.lockAfter")))
+			if minutes > 0 {
+				seconds := minutes * 60
+				if ui.duration_field("###lock_after", &seconds, least = 60, most = 1439 * 60) {
+					set_value(app, "socle.desktop.lockAfter", json.Integer(seconds / 60))
+				}
+				ui.spacer(ui.px(em * 0.8))
+			}
+			v := minutes > 0
+			if ui.toggle("###lock_toggle", "", &v) {
+				back := int(num(template_at(app, "socle.desktop.lockAfter")))
+				set_value(app, "socle.desktop.lockAfter", json.Integer(v ? (back > 0 ? back : LOCK_MINUTES) : 0))
+			}
 		}
 	}
 }

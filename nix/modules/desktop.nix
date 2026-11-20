@@ -6,15 +6,7 @@
 }: let
   cfg = config.socle.desktop;
   on = cfg.environment != "none";
-  seconds =
-    {
-      never = 0;
-      "5" = 300;
-      "15" = 900;
-    }
-    .${
-      cfg.lockAfter
-    };
+  seconds = cfg.lockAfter * 60;
 in {
   options.socle.desktop = {
     environment = lib.mkOption {
@@ -40,9 +32,9 @@ in {
       };
     };
     lockAfter = lib.mkOption {
-      type = lib.types.enum ["never" "5" "15"];
-      default = "5";
-      description = "Locks the session once the screen goes off, after this many minutes.";
+      type = lib.types.ints.between 0 1439;
+      default = 5;
+      description = "Locks the session once the screen goes off, after this many minutes; 0: never.";
     };
   };
 

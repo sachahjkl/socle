@@ -187,6 +187,7 @@ close :: proc(app: ^App) {
 	for c in app.changes { delete(c.text); delete(c.page) }
 	delete(app.changes)
 	generations_destroy(&app.generations)
+	build_log_destroy(&app.apply.log)
 	layer_destroy(&app.draft)
 	layer_destroy(&app.committed)
 	layer_destroy(&app.machine)

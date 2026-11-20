@@ -12,6 +12,10 @@ Nix_Log :: struct {
 	bytes:    map[u64]i64,   // a download's bytes done
 	progress: Progress,
 	errors:   strings.Builder,
+	// The lines a person reads (what starts, what a build prints, the messages), owned, since the reader last took
+	// them (nix_log_take); kept only with `keep_lines`: a reader that never takes them would hold the whole build.
+	keep_lines: bool,
+	lines:    [dynamic]string,
 }
 
 nix_log_init :: proc(l: ^Nix_Log) {
@@ -25,6 +29,25 @@ nix_log_destroy :: proc(l: ^Nix_Log) {
 	delete(l.bytes)
 	delete(l.progress.doing)
 	strings.builder_destroy(&l.errors)
+	for s in l.lines { delete(s) }
+	delete(l.lines)
+}
+
+// The lines said since the last take, the caller's now (nil: none).
+nix_log_take :: proc(l: ^Nix_Log) -> []string {
+	if len(l.lines) == 0 { return nil }
+	out := make([]string, len(l.lines))
+	copy(out, l.lines[:])
+	clear(&l.lines)
+	return out
+}
+
+@(private = "file")
+nix_log_keep :: proc(l: ^Nix_Log, text: string) {
+	if !l.keep_lines { return }
+	t := strings.trim_right_space(strip_colours(text))
+	if t == "" { return }
+	append(&l.lines, strings.clone(t))
 }
 
 // The errors that nix said, colours removed.
@@ -44,6 +67,7 @@ nix_log_line :: proc(l: ^Nix_Log, text: string) -> bool {
 		kind := int(num(o["type"]))
 		l.kinds[id] = kind
 		words := str(o["text"])
+		nix_log_keep(l, words)
 		if (kind == ACT_BUILD || kind == ACT_COPY_PATH) && words != "" {
 			delete(l.progress.doing)
 			l.progress.doing = strings.clone(words)
@@ -67,8 +91,11 @@ nix_log_line :: proc(l: ^Nix_Log, text: string) -> bool {
 			}
 		case RES_SET_EXPECTED:
 			if len(fields) >= 2 && int(num(fields[0])) == ACT_COPY_PATH { l.progress.bytes_expected = i64(num(fields[1])) }
+		case RES_BUILD_LOG_LINE, RES_POST_BUILD_LOG_LINE:
+			if len(fields) >= 1 { nix_log_keep(l, str(fields[0])) }
 		}
 	case "msg":
+		nix_log_keep(l, str(o["msg"]))
 		if int(num(o["level"])) == 0 {
 			strings.write_string(&l.errors, strip_colours(str(o["msg"])))
 			strings.write_byte(&l.errors, '\n')
@@ -85,6 +112,8 @@ nix_log_line :: proc(l: ^Nix_Log, text: string) -> bool {
 @(private = "file") ACT_BUILD         :: 100 + 6
 @(private = "file") RES_PROGRESS      :: 100 + 5
 @(private = "file") RES_SET_EXPECTED  :: 100 + 6
+@(private = "file") RES_BUILD_LOG_LINE :: 100 + 1
+@(private = "file") RES_POST_BUILD_LOG_LINE :: 100 + 7
 
 // The escapes of a terminal's colours, which nix puts in its messages.
 strip_colours :: proc(s: string) -> string {
