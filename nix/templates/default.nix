@@ -11,7 +11,7 @@ in {
   };
   gaming = system {
     title = "Gaming machine";
-    description = "Extends Family desktop: Steam, controllers, the Plasma desktop.";
+    description = "Steam, controllers, the Plasma desktop.";
     parent = "socle#family-desktop";
     layer = ./gaming.json;
   };

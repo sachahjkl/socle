@@ -48,6 +48,23 @@
     .homeConfigurations
     .ada;
   home = (homeOf null).activationPackage;
+  # a template saved by socle (tests/template: what the export writes), started from as an input named mine
+  exported = socleLib.configuration {
+    inputs = inputs // {mine = (import ../tests/template/flake.nix).outputs {};};
+    root = ../tests/bare;
+    system = {
+      socle = 1;
+      template = "mine#my-desktop";
+      values = {};
+    };
+  };
+  exportedNames = map lib.getName exported.nixosConfigurations.test.config.environment.systemPackages;
+  exportedChecks = [
+    (expect "the saved template's app is there (krita)" (builtins.elem "krita" exportedNames))
+    (expect "its parent's app is there (firefox)" (builtins.elem "firefox" exportedNames))
+    (expect "its setting holds (no printing)" (!exported.nixosConfigurations.test.config.services.printing.enable))
+    (expect "the gallery lists it" (builtins.any (g: g.ref == "mine#my-desktop") exported.socleInfo.test.gallery))
+  ];
   # every template, of its target: it evaluates to a derivation (a system's without the socle program: the eject)
   templates = lib.mapAttrsToList (name: t: let
     layer = {
@@ -63,7 +80,7 @@
     ))
   inputs.self.socleTemplates;
 in {
-  layers = pkgs.writeText "socle-layers" (lib.concatStringsSep "\n" layers);
+  layers = pkgs.writeText "socle-layers" (lib.concatStringsSep "\n" (layers ++ exportedChecks));
   templates = pkgs.writeText "socle-templates" (lib.concatStringsSep "\n" templates);
   homes = pkgs.runCommand "socle-homes" {} ''
     p=${home}/home-path/bin

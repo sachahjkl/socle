@@ -2,13 +2,13 @@
 
 ## Now
 
-- **Your own template.** Turn the current system or home into a template, extend another one, export it as a git
-  repository that anyone can start from. [Templates](src/md/data/templates.md).
+- **The installer's other disks.** Install beside another system on a disk that it shares, and on a machine that
+  starts in legacy BIOS mode. [The installer](src/md/features/installer.md).
 
 ## Next
 
-- **The installer's other disks.** Install beside another system on a disk that it shares, and on a machine that
-  starts in legacy BIOS mode. [The installer](src/md/features/installer.md).
+- **Templates with pictures, and their updates.** A saved template carries pictures of the system; the Updates page
+  shows what a new version of a template changes. [Templates](src/md/data/templates.md).
 - **A home without Nix, and on macOS.** A program that runs without Nix, which installs Nix (Determinate's installer)
   and then starts a home; the same on macOS. [Targets](src/md/data/targets.md).
 

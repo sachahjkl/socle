@@ -177,23 +177,6 @@ helper_collect :: proc(count: string) -> int {
 	return 0
 }
 
-// The flake of a folder that socle manages: its inputs and one call to socle's library (configuration.md).
-FLAKE_TEXT :: `{
-  description = "This machine's system, managed by socle: socle/*.json are its settings, custom/*.nix its code.";
-  inputs = {
-    nixpkgs.url = "%s";
-    socle = {
-      url = "%s";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
-  outputs = inputs: inputs.socle.lib.configuration {
-    inherit inputs;
-    root = ./.;
-  };
-}
-`
-
 SOCLE_URL   :: "git+https://github.com/sachahjkl/socle?submodules=1"
 NIXPKGS_URL :: "https://flakehub.com/f/NixOS/nixpkgs/0.2605"
 
@@ -209,7 +192,9 @@ helper_init :: proc(template, source: string) -> int {
 	for d in ([]string{join(folder, "socle", "hosts"), hw, join(folder, "custom")}) {
 		if os.make_directory_all(d) != nil { return helper_fail(fmt.tprintf("%s cannot be made", d)) }
 	}
-	_ = os.write_entire_file(join(folder, "flake.nix"), fmt.tprintf(FLAKE_TEXT, NIXPKGS_URL, source != "" ? source : SOCLE_URL))
+	inputs := inputs_default("", source)
+	_ = os.write_entire_file(join(folder, "flake.nix"), flake_text(inputs, context.temp_allocator))
+	_ = os.write_entire_file(join(folder, "socle", INPUTS_FILE), inputs_text(inputs, context.temp_allocator))
 	_ = os.write_entire_file(join(folder, "socle", "system.json"), fmt.tprintf("{{\n  \"socle\": 1,\n  \"template\": %q,\n  \"values\": {{\n    \"socle\": {{\"people\": {{%s}}}}\n  }}\n}}\n", template, people_json()))
 	machine := layer_parse("")
 	defer layer_destroy(&machine)
@@ -227,7 +212,7 @@ helper_init :: proc(template, source: string) -> int {
 	}
 	// (the group's: an administrator edits and commits without root)
 	ok := git(folder, "init", "-q", "--shared=group") && git(folder, "add", "-A") &&
-		git(folder, "-c", "user.name=socle", "-c", "user.email=socle@localhost", "commit", "-q", "-m", fmt.tprintf("Start from %s", template))
+		git(folder, "-c", "user.name=socle", "-c", "user.email=socle@localhost", "-c", "commit.gpgsign=false", "commit", "-q", "-m", fmt.tprintf("Start from %s", template))
 	if !ok { return helper_fail("git could not record the folder") }
 	_ = run({SW + "chgrp", "-R", "wheel", folder}, allocator = context.temp_allocator)
 	_ = run({SW + "chmod", "-R", "g+rwX", folder}, allocator = context.temp_allocator)

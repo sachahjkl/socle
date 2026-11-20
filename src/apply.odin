@@ -285,7 +285,7 @@ Build :: struct {
 build_work :: proc(data: rawptr) {
 	b := (^Build)(data)
 	// (a flake in git sees only the files git knows: socle adds its own, and the person's code: README.md, "Subtleties")
-	add := run({"git", "-C", b.folder, "add", "-A", "--", "socle", "custom", "flake.lock"})
+	add := run({"git", "-C", b.folder, "add", "-A", "--", "socle", "custom", "flake.lock", "flake.nix"})
 	delete(add.stdout); delete(add.stderr)
 	nix_log_init(&b.log)
 	target := b.target == .Home ? fmt.tprintf("%s#homeConfigurations.\"%s\".activationPackage", b.folder, b.host) : fmt.tprintf("%s#nixosConfigurations.%s.config.system.build.toplevel", b.folder, b.host)
@@ -435,9 +435,11 @@ Commit :: struct { app: ^App, folder, message, why: string }
 @(private = "file")
 commit_work :: proc(data: rawptr) {
 	c := (^Commit)(data)
-	add := run({"git", "-C", c.folder, "add", "-A", "--", "socle", "custom", "flake.lock"})
+	add := run({"git", "-C", c.folder, "add", "-A", "--", "socle", "custom", "flake.lock", "flake.nix"})
 	delete(add.stdout); delete(add.stderr)
-	r := run({"git", "-C", c.folder, "-c", "user.name=socle", "-c", "user.email=socle@localhost", "commit", "-q", "--allow-empty", "-m", c.message})
+	// (socle's commits are socle's, never signed: a person's signing key is not root's, nor in every session, and a
+	// commit that cannot be signed fails. The same in every commit of socle's)
+	r := run({"git", "-C", c.folder, "-c", "user.name=socle", "-c", "user.email=socle@localhost", "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", c.message})
 	if !r.ok { c.why = strings.clone(strings.trim_space(r.stderr)) }
 	delete(r.stdout); delete(r.stderr)
 }
@@ -465,6 +467,7 @@ views_register_all :: proc(app: ^App) {
 	vs := ui.state_views(&app.main.state)
 	ui.view_register(vs, REVIEW_VIEW, review_view, ui.View_Options{title = "Review the changes", icon = lucide.LIST_CHECKS, width_em = 34})
 	ui.view_register(vs, KEEP_VIEW, keep_view, ui.View_Options{title = "Keep this version?", icon = lucide.SHIELD_CHECK, width_em = 28})
+	ui.view_register(vs, EXPORT_VIEW, export_view, ui.View_Options{title = "Save as a template", icon = lucide.SAVE, width_em = 32})
 }
 
 review_open :: proc(app: ^App) {

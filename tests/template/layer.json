@@ -1,0 +1,15 @@
+{
+  "socle": 1,
+  "values": {
+    "services": {
+      "printing": {
+        "enable": false
+      }
+    },
+    "socle": {
+      "packages": {
+        "krita": true
+      }
+    }
+  }
+}

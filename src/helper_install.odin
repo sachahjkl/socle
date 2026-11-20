@@ -83,7 +83,7 @@ helper_install :: proc(folder: string) -> int {
 	if r := run_said({SW + "nix", "--extra-experimental-features", "nix-command flakes", "flake", "lock", fmt.tprintf("git+file://%s", INSTALL_FOLDER)}); !r.ok {
 		return helper_fail("the folder's sources could not be locked")
 	}
-	if !(git("add", "-A") && git("-c", "user.name=socle", "-c", "user.email=socle@localhost", "commit", "-q", "-m", fmt.tprintf("Install from %s", target.template))) {
+	if !(git("add", "-A") && git("-c", "user.name=socle", "-c", "user.email=socle@localhost", "-c", "commit.gpgsign=false", "commit", "-q", "-m", fmt.tprintf("Install from %s", target.template))) {
 		return helper_fail("git could not record the folder")
 	}
 	_ = run({SW + "chgrp", "-R", "1", INSTALL_FOLDER}, allocator = context.temp_allocator)

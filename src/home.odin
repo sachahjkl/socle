@@ -27,7 +27,8 @@ home_write :: proc(dir, template, user, home_dir, host, socle_url: string) -> st
 	layer_set(&own, {"home", "stateVersion"}, json.String(strings.clone(HOME_RELEASE)))
 	name := host != "" ? fmt.tprintf("%s@%s", user, host) : user
 	writes := [][2]string{
-		{join(dir, "flake.nix"), fmt.tprintf(FLAKE_TEXT, NIXPKGS_URL, socle_url != "" ? socle_url : SOCLE_URL)},
+		{join(dir, "flake.nix"), flake_text(inputs_default("", socle_url), context.temp_allocator)},
+		{join(dir, "socle", INPUTS_FILE), inputs_text(inputs_default("", socle_url), context.temp_allocator)},
 		{join(dir, "socle", "system.json"), layer_text(person, context.temp_allocator)},
 		{join(dir, "socle", "homes", fmt.tprintf("%s.json", name)), layer_text(own, context.temp_allocator)},
 	}
@@ -41,7 +42,7 @@ home_write :: proc(dir, template, user, home_dir, host, socle_url: string) -> st
 		return run(cmd[:], allocator = context.temp_allocator).ok
 	}
 	if !(git(dir, "init", "-q") && git(dir, "add", "-A") &&
-		git(dir, "-c", "user.name=socle", "-c", "user.email=socle@localhost", "commit", "-q", "-m", fmt.tprintf("Start from %s", template))) {
+		git(dir, "-c", "user.name=socle", "-c", "user.email=socle@localhost", "-c", "commit.gpgsign=false", "commit", "-q", "-m", fmt.tprintf("Start from %s", template))) {
 		return "git could not record the folder"
 	}
 	return ""

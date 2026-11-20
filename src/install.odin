@@ -87,9 +87,10 @@ plan_write :: proc(dir: string, p: Plan) -> string {
 	layer_set(&machine, {"services", "xserver", "xkb", "layout"}, json.String(strings.clone(p.keyboard)))
 	layer_set(&machine, {"console", "useXkbConfig"}, json.Boolean(true))
 
-	flake := fmt.tprintf(FLAKE_TEXT, p.nixpkgs != "" ? p.nixpkgs : NIXPKGS_URL, p.socle != "" ? p.socle : SOCLE_URL)
+	inputs := inputs_default(p.nixpkgs, p.socle)
 	writes := [][2]string{
-		{join(dir, "flake.nix"), flake},
+		{join(dir, "flake.nix"), flake_text(inputs, context.temp_allocator)},
+		{join(dir, "socle", INPUTS_FILE), inputs_text(inputs, context.temp_allocator)},
 		{join(dir, "socle", "system.json"), layer_text(system, context.temp_allocator)},
 		{join(dir, "socle", "hosts", fmt.tprintf("%s.json", p.host)), layer_text(machine, context.temp_allocator)},
 	}

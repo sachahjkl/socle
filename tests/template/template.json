@@ -1,0 +1,6 @@
+{
+  "description": "The family's desktop, with Krita and no printer.",
+  "parent": "socle#family-desktop",
+  "target": "system",
+  "title": "My desktop"
+}

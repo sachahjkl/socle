@@ -74,7 +74,7 @@
       then socle
       else inputs.${input} or (throw "socle: no input ${input} for the template ${ref}");
   in
-    (source.socleTemplates.${name} or (throw "socle: ${input} has no template ${name}")) // {inherit ref;};
+    {target = "system";} // (source.socleTemplates.${name} or (throw "socle: ${input} has no template ${name}")) // {inherit ref;};
 
   # A template and its parents, the root first. At most five deep; a loop is refused.
   chainOf = inputs: ref: let
@@ -270,21 +270,25 @@
           unfree = !(p.meta.license.free or true);
         })
       (import ./popular.nix);
-      # (the templates of this configuration's target)
-      gallery =
-        lib.mapAttrsToList (n: t: {
-          ref = "socle#${n}";
-          inherit (t) title description target;
-          parent = t.parent or null;
-        })
-        (lib.filterAttrs (_: t:
-          t.target
-          == (
-            if isHome
-            then "home"
-            else "system"
-          ))
-        socle.socleTemplates);
+      # (the templates of this configuration's target, from socle and from every input that has some: templates.md)
+      gallery = let
+        want =
+          if isHome
+          then "home"
+          else "system";
+        sources = removeAttrs inputs ["self"] // {inherit socle;};
+        of = input: source:
+          lib.mapAttrsToList (n: t: {
+            ref = "${input}#${n}";
+            inherit (t) title description;
+            target = t.target or "system";
+            parent = t.parent or null;
+            # (a template's own Nix runs as root: the gallery says so, templates.md "Trust")
+            code = (t.modules or []) != [];
+          })
+          (lib.filterAttrs (_: t: (t.target or "system") == want) (source.socleTemplates or {}));
+      in
+        lib.concatLists (lib.mapAttrsToList of sources);
     };
   in {
     nixosConfigurations = systems;

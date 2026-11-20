@@ -72,6 +72,7 @@ App :: struct {
 	setup_ref:   int,            // Setup: the template chosen
 	setup_sure:  bool,
 	setup_templates: [dynamic]Gallery_Entry,   // Setup: socle's templates of the target, read when the folder is absent
+	templates:   Template_State,                // Templates: save as a template, start from a link
 
 	// the installer's window, in place of the system's (installer.odin): nil unless `socle install`
 	installer:     ^Installer,
@@ -190,6 +191,7 @@ close :: proc(app: ^App) {
 	layer_destroy(&app.committed)
 	layer_destroy(&app.machine)
 	gallery_destroy(&app.setup_templates)
+	template_state_destroy(&app.templates)
 	info_destroy(app.info)
 	ui.line_edit_destroy(&app.search)
 	ui.line_edit_destroy(&app.options_search)

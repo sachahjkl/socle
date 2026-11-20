@@ -5,6 +5,7 @@ package socle
 
 import "core:fmt"
 import "core:math"
+import "core:os"
 import "core:strings"
 import host "gt:host"
 import lucide "gt:lucide"
@@ -257,6 +258,22 @@ draft_discard :: proc(app: ^App) {
 	layer_destroy(&app.draft)
 	app.draft = layer_clone(app.committed)
 	draft_changed(app)
+	if app.source != .Folder { return }
+	// (socle's own files of the folder as its last commit has them: a template's link, the sources moved forward)
+	Discard :: struct { app: ^App, folder: string }
+	ui.task(&app.main.state, proc(d: rawptr) {
+		x := (^Discard)(d)
+		// (system.json too, before the folder is read again: the draft's save may not have ended, and both hold the
+		// commit's values)
+		_ = run({"git", "-C", x.folder, "checkout", "HEAD", "--", "flake.nix", "flake.lock", "socle/system.json"}, allocator = context.temp_allocator)
+		inputs := join(x.folder, "socle", INPUTS_FILE)
+		if run({"git", "-C", x.folder, "checkout", "HEAD", "--", "socle/inputs.json"}, allocator = context.temp_allocator).ok == false { _ = os.remove(inputs) }
+	}, proc(d: rawptr, _: u64) {
+		x := (^Discard)(d)
+		load_start(x.app)
+		delete(x.folder)
+		free(x)
+	}, new_clone(Discard{app = app, folder = strings.clone(app.folder)}), proc(d: rawptr) { free(d) })
 }
 
 progress_words :: proc(app: ^App, k: f32) -> string {

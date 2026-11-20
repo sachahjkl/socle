@@ -137,7 +137,52 @@ folder_script :: proc(t: ^Take) -> string {
 	until(t, proc(app: ^socle.App) -> bool { _, known := app.option_values[app.option]; return known }, 120)
 	film.hold(r, 1.5)
 	tap(t, "nav_History", after = 1.5)
+	if t.app.target == .System {
+		if why := templates_script(t); why != "" { return why }
+	}
 	tap(t, "nav_Overview", after = 1.5)
+	return ""
+}
+
+// A template from a link (tests/template, a saved one), shown in the gallery once evaluated, then discarded; the
+// applied system saved as a template (under $HOME/socle-templates: run with a HOME of its own).
+@(private = "file")
+templates_script :: proc(t: ^Take) -> string {
+	r := &t.rec
+	tap(t, "nav_Templates", after = 0.6)
+	// (the page's own parts are under the gallery)
+	point(t, "page_scroll", glide = 0.4, after = 0.1)
+	film.wheel(r, {0, -12}, 0.6)
+	film.hold(r, 0.4)
+	tap(t, "template_link", after = 0.2)
+	// (not in the temporary memory: each frame of the window frees it, while the link is typed)
+	cwd, _ := os.get_working_directory(context.allocator)
+	link := fmt.aprintf("path:%s/tests/template#my-desktop", cwd)
+	defer { delete(cwd); delete(link) }
+	film.type_text(r, link, 40)
+	fmt.printfln("socle_film: the link typed: %q", ui.line_edit_string(&t.app.templates.link))
+	tap(t, "template_link_go", after = 0.6)
+	film.hold(r, 1.5)
+	if !until(t, proc(app: ^socle.App) -> bool { return !app.templates.linking && !app.evaluating && app.eval_due_ms == 0 }, 600) { return "the link's template was not evaluated" }
+	found := false
+	for g in t.app.info.gallery { found ||= g.ref == "template-my-desktop#my-desktop" }
+	fmt.printfln("socle_film: from a link: template %s, in the gallery: %v, evaluation: %s", socle.layer_template(t.app.draft), found, t.app.eval_error == "" ? "valid" : t.app.eval_error)
+	if !found || t.app.eval_error != "" { return "the link's template is not in the gallery" }
+	film.hold(r, 1.5)
+	tap(t, "changes_discard", after = 0.8)
+	if !until(t, proc(app: ^socle.App) -> bool { return !app.loading }, 300) { return "the folder was not read again" }
+	fmt.printfln("socle_film: discarded: template %s, %d changes", socle.layer_template(t.app.draft), len(t.app.changes))
+	tap(t, "template_save", after = 0.6)
+	tap(t, "export_title", after = 0.2)
+	film.type_text(r, "Our family desktop", 14)
+	tap(t, "export_go", after = 0.6)
+	if !until(t, proc(app: ^socle.App) -> bool { return !app.templates.saving }, 60) { return "the template was not saved" }
+	dir := fmt.tprintf("%s/socle-templates/our-family-desktop", os.get_env("HOME", context.temp_allocator))
+	// (a git log of HEAD: the repository has its first commit)
+	committed := os.exists(fmt.tprintf("%s/.git/logs/HEAD", dir))
+	fmt.printfln("socle_film: saved: %s holds a flake: %v, a commit: %v", dir, os.exists(fmt.tprintf("%s/flake.nix", dir)), committed)
+	if !os.exists(fmt.tprintf("%s/flake.nix", dir)) || !committed { return "the saved template has no flake or no commit" }
+	film.hold(r, 1.5)
 	return ""
 }
 

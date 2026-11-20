@@ -21,6 +21,7 @@ Popular :: struct {
 
 Gallery_Entry :: struct {
 	ref, title, description, parent, target: string,
+	code: bool,   // it carries Nix of its own, which runs as root (templates.md, "Trust")
 }
 
 // Every template of socle's, of both targets (src/demo/gallery.json, written by `socletool demo` from the flake): the
@@ -128,7 +129,8 @@ info_parse :: proc(text: string) -> (info: ^Info, why: string) {
 	}
 	for g in arr(root["gallery"]) {
 		o, _ := g.(json.Object)
-		append(&info.gallery, Gallery_Entry{ref = str(o["ref"]), title = str(o["title"]), description = str(o["description"]), parent = str(o["parent"]), target = str(o["target"])})
+		code, _ := o["code"].(json.Boolean)
+		append(&info.gallery, Gallery_Entry{ref = str(o["ref"]), title = str(o["title"]), description = str(o["description"]), parent = str(o["parent"]), target = str(o["target"]), code = bool(code)})
 	}
 	for t in arr(root["templates"]) {
 		o, _ := t.(json.Object)
@@ -209,9 +211,39 @@ layer_destroy :: proc(l: ^Layer) {
 
 layer_clone :: proc(l: Layer) -> Layer { return {tree = json.clone_value(l.tree)} }
 
+// A JSON value's text, on one line ("null" for nil).
+json_text :: proc(v: json.Value, allocator := context.allocator) -> string {
+	if v == nil { return strings.clone("null", allocator) }
+	data, _ := json.marshal(v, {sort_maps_by_key = true}, allocator)
+	return string(data)
+}
+
 layer_text :: proc(l: Layer, allocator := context.allocator) -> string {
-	data, _ := json.marshal(l.tree, {pretty = true, use_spaces = true, spaces = 2, sort_maps_by_key = true}, allocator)
-	return strings.concatenate({string(data), "\n"}, allocator)
+	data, _ := json.marshal(l.tree, {pretty = true, use_spaces = true, spaces = 2, sort_maps_by_key = true}, context.temp_allocator)
+	// (the encoder writes an empty object as "{", a blank line and "}": a layer that sets nothing reads {})
+	b := strings.builder_make(allocator)
+	text := string(data)
+	quoted := false   // (inside a string: its text stays as it is)
+	for i := 0; i < len(text); i += 1 {
+		switch {
+		case quoted && text[i] == '\\' && i + 1 < len(text):
+			strings.write_byte(&b, text[i]); i += 1; strings.write_byte(&b, text[i]); continue
+		case text[i] == '"':
+			quoted = !quoted
+		}
+		if !quoted && text[i] == '{' {
+			j := i + 1
+			for j < len(text) && (text[j] == '\n' || text[j] == ' ') { j += 1 }
+			if j < len(text) && text[j] == '}' {
+				strings.write_string(&b, "{}")
+				i = j
+				continue
+			}
+		}
+		strings.write_byte(&b, text[i])
+	}
+	strings.write_byte(&b, '\n')
+	return strings.to_string(b)
 }
 
 // The draft's value at a path under "values" (nil: the draft does not set it).

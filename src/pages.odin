@@ -740,6 +740,7 @@ templates_page :: proc(app: ^App, em: f32) {
 			}
 		}
 	}
+	templates_own(app, em)
 }
 
 @(private = "file")
@@ -758,6 +759,10 @@ template_card :: proc(app: ^App, t: Gallery_Entry, i: int, current: string, em: 
 			if t.ref == current {
 				ui.spacer(ui.px(em * 0.6))
 				ui.pill(fmt.tprintf("in_use%d", i), t.ref == layer_template(app.committed) ? "In use" : "Chosen", "", ui.hue(.Green))
+			}
+			if t.code {
+				ui.spacer(ui.px(em * 0.6))
+				ui.pill(fmt.tprintf("code%d", i), "Runs its own Nix", lucide.ALERT_TRIANGLE, ui.hue(.Yellow))
 			}
 		}
 		ui.spacer(ui.px(em * 0.35))

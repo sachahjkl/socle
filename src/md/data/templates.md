@@ -39,11 +39,27 @@ chain that loops is refused when the configuration is evaluated.
 
 ## Save as template
 
-- The export takes `socle/system.json` only. The machine's layer (`socle/hosts/<host>.json`) stays: it holds the host
-  name, the people, the password hashes and the network secrets. This is why there are two layers for the person.
-- The export writes a new folder: a flake with `socleTemplates.<name>`, `layer.json`, pictures taken from the running
-  system, a README. It can be pushed to any git host; `github:owner/repo#name` is then enough to start from it.
-- `custom/` is not exported unless the person asks; the review lists its files.
+- The export takes the applied `socle/system.json` only (the folder's last commit, not the draft). The machine's layer
+  (`socle/hosts/<host>.json`) stays: it holds the host name, the disk, the password hashes. This is why there are two
+  layers for the person.
+- It leaves out `socle.people` and `users`: a template gives a system, not its accounts.
+- A parent of socle's stays a parent (`socle#family-desktop`): every configuration has the input `socle`. Another
+  parent is flattened into the layer (the chain's values, under the person's): the configuration that starts from the
+  template may not have that parent's input.
+- The export writes a new git repository, `~/socle-templates/<name>` (template.odin, `template_export`): `flake.nix`,
+  `template.json` (title, description, target, parent: data, so no text needs escaping in Nix), `layer.json`, a
+  README. The flake reads `template.json` and adds the layer. It can be pushed to any git host; `github:owner/repo#name`
+  is then enough to start from it. Pictures wait.
+- `custom/` is not exported.
+
+## Start from a link
+
+- The Templates page takes `<flake reference>#<name>`. socle adds the flake as an input of the folder's `flake.nix`
+  and points the person's layer at `<input>#<name>`; the evaluation locks the input.
+- socle writes `flake.nix` from data, `socle/inputs.json` (each input's name and address), and never reads the Nix of
+  it. A folder made before `inputs.json` existed gets one from its `flake.lock`'s addresses.
+- The gallery lists the templates of every input that has `socleTemplates`, with a mark when a template carries Nix
+  code.
 
 ## Trust
 
