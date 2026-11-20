@@ -3,6 +3,14 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.7.0] - 2026-11-20 10:58
+
+### Added
+- **A build's details**: while a new version is prepared, Details unfolds nix's own lines above the bar (what is downloaded, what is built, what it prints), and after a failure they stay there to read.
+
+### Changed
+- **Screen lock after any delay**: the screen lock takes any delay, in hours and minutes, in a field typed part by part or set on wheels that open with a click; a switch turns it off.
+
 ## [0.6.0] - 2026-11-20 07:57
 
 ### Added
@@ -57,6 +65,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.7.0]: https://github.com/sachahjkl/socle/releases/tag/v0.7.0
 [0.6.0]: https://github.com/sachahjkl/socle/releases/tag/v0.6.0
 [0.5.0]: https://github.com/sachahjkl/socle/releases/tag/v0.5.0
 [0.4.0]: https://github.com/sachahjkl/socle/releases/tag/v0.4.0
