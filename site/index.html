@@ -22,20 +22,48 @@
     <p class="lead">Your whole system in one window: start from a ready-made system, change any setting, go back in one step.</p>
     <span class="status">Early: it installs and runs real NixOS systems</span>
     <div class="actions">
-      <a class="btn accent" href="#film">Watch the film</a>
-      <a class="btn" href="https://github.com/sachahjkl/socle">Source on GitHub</a>
+      <a class="btn accent" href="docs/getting-started/">Get started</a>
+      <a class="btn" href="docs/install/">Install a computer</a>
+      <a class="btn" href="docs/">Documentation</a>
     </div>
-    <p class="small">For NixOS, and for Nix on any other system &nbsp;·&nbsp; MIT</p>
+    <p class="small">For NixOS, and for Nix on any other Linux &nbsp;·&nbsp; MIT</p>
   </section>
-
-  <figure class="film" id="film">
-    <video controls preload="metadata" playsinline poster="img/film.jpg" src="socle.mp4"></video>
-  </figure>
 
   <figure class="shot wide">
     <a class="frame" href="img/overview.png"><img src="img/overview.png" alt="The overview: the running version, its updates, its pages, the recent changes" loading="lazy"></a>
     <figcaption>The overview: what runs, what waits, what changed.</figcaption>
   </figure>
+
+  <section id="download" class="download">
+    <h2>Get started</h2>
+    <div class="cols">
+      <div class="well">
+        <h3>Try it in a virtual machine</h3>
+        <p>A NixOS that Socle manages, on your Linux with Nix and KVM. Every change you apply is real, and stays inside
+          the machine. <a href="docs/getting-started/">The first ten minutes</a>.</p>
+        <code>nix run github:sachahjkl/socle#vm</code>
+      </div>
+      <div class="well">
+        <h3>Install a computer</h3>
+        <p>Write the Desktop image of the <a href="https://github.com/sachahjkl/socle/releases/latest">latest release</a>
+          to a USB stick and start the computer from it. It takes one whole disk, UEFI and the network.
+          <a href="docs/install/">Step by step</a>.</p>
+        <code>sudo dd if=socle-*-desktop-x86_64-linux.iso of=/dev/sdX bs=4M</code>
+      </div>
+      <div class="well">
+        <h3>Take over your NixOS</h3>
+        <p>Socle starts from a template, keeps your hardware, boot loader and accounts, and changes nothing until you
+          apply. <a href="docs/take-over/">What it keeps</a>.</p>
+        <code>nix run github:sachahjkl/socle</code>
+      </div>
+      <div class="well">
+        <h3>A home on any Linux</h3>
+        <p>Your own apps, shell and tools through Home Manager, with no administrator. On a Linux that is not NixOS,
+          the same command opens your home. <a href="docs/home/">How</a>.</p>
+        <code>nix run github:sachahjkl/socle</code>
+      </div>
+    </div>
+  </section>
 
   <section id="features" class="grid">
     <article class="card">
@@ -95,29 +123,9 @@
     <figure class="shot"><a class="frame" href="img/install-progress.png"><img src="img/install-progress.png" alt="The install under way: the disk formatted, the system downloaded and built" loading="lazy"></a><figcaption>The installer: the install</figcaption></figure>
   </section>
 
-  <section id="download" class="download">
-    <h2>Try it</h2>
-    <div class="cols">
-      <div class="well">
-        <h3>In a virtual machine</h3>
-        <p>A NixOS that Socle manages, its window open. Every change you apply is real, inside the machine. The
-          password is <code>socle</code>.</p>
-        <code>nix run github:sachahjkl/socle#vm</code>
-      </div>
-      <div class="well">
-        <h3>On a computer</h3>
-        <p>Start it from a Desktop or a Minimal image of the <a href="https://github.com/sachahjkl/socle/releases">releases</a>.
-          The installer takes one whole disk, and needs UEFI and the network. From any NixOS live image:</p>
-        <code>nix run github:sachahjkl/socle -- install</code>
-      </div>
-      <div class="well">
-        <h3>On your NixOS</h3>
-        <p>Socle offers to take the machine over from a template; nothing changes until you apply. Or just look, on
-          its demo system: <a href="https://github.com/sachahjkl/socle/blob/master/ROADMAP.md">the roadmap</a>.</p>
-        <code>nix run github:sachahjkl/socle -- --demo</code>
-      </div>
-    </div>
-  </section>
+  <figure class="film" id="film">
+    <video controls preload="metadata" playsinline poster="img/film.jpg" src="socle.mp4"></video>
+  </figure>
 </main>
 
 <!-- site-footer -->

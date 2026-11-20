@@ -28,7 +28,7 @@ odin run tools/socletool -collection:gt=ext/gui_toolkit/src -out:build/socletool
 | `mockups [names]` | `docs/mockups/*.html` drawn to PNG at 1280 × 800 by a headless Chromium |
 | `build [release]`, `test`, `check` | the program `build/socle` (the toolkit's native library first), its tests, every check (gui_toolkit's `toolbox.build_commands`) |
 | `film [out.mp4]` | the presentation film: `tools/socle_film` drives socle's window headless on the graphics card (gt:film), ffmpeg encodes it (NVENC when there is one): `site/socle.mp4`. `--install`: the installer on the demo; `--folder=<path>`: a check of a real folder |
-| `site build <site> <out>`, `check`, `card` | the site's pages (gt:site), published by `.github/workflows/pages.yml` |
+| `site build <site> <out>`, `check`, `card` | the site's pages (gt:site) and its Docs section from `docs/*.md` and `docs/_nav.txt`, published by `.github/workflows/pages.yml`; `check` opens them in a headless Chrome (`--browser <program>`) |
 
 `build`, `test` and `check` come from gui_toolkit (`toolbox.build_commands`) with the first code of the program.
 `GT=<folder>` builds against another checkout of gui_toolkit.

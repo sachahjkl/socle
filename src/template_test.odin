@@ -88,7 +88,7 @@ a_template_link_is_checked_and_becomes_an_input :: proc(t: ^testing.T) {
 	inputs := []Input{{"nixpkgs", NIXPKGS_URL}, {"socle", SOCLE_URL}, {template_input("my-desktop"), "github:ada/desktops"}}
 	flake := flake_text(inputs, context.temp_allocator)
 	testing.expect(t, strings.contains(flake, `template-my-desktop.url = "github:ada/desktops";`))
-	// (a folder of before inputs.json: its flake's text as the flake_text of its two inputs)
+	// (a new folder's flake: its two inputs, socle's Nixpkgs followed)
 	testing.expect(t, strings.contains(flake_text(inputs[:2], context.temp_allocator), `inputs.nixpkgs.follows = "nixpkgs";`))
 	testing.expect_value(t, template_name("My Desktop, 2026!"), "my-desktop-2026")
 }

@@ -14,6 +14,12 @@
       url = "git+https://codeberg.org/wvhulle/bootvine";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # the toolkit the program is built on: the same commit as the ext/gui_toolkit submodule (socletool check says so). An
+    # input, not the submodule, for the package: a github: flake comes without its submodules
+    gui_toolkit = {
+      url = "github:sachahjkl/gui_toolkit/v0.333.0";
+      flake = false;
+    };
     # a home on any system (src/md/data/targets.md): Home Manager on its own, NixOS or not
     home-manager = {
       url = "https://flakehub.com/f/nix-community/home-manager/0.2605";
@@ -97,11 +103,17 @@
       inherit version;
       src = lib.fileset.toSource {
         root = ./.;
-        # (tests/install stays: a unit test of the program loads its machine layer)
-        fileset = lib.fileset.difference ./. (lib.fileset.unions (map lib.fileset.maybeMissing [./site ./build ./docs ./tests/demo ./tests/sample ./tests/bare ./tests/switch ./tests/vm]));
+        # (tests/install and tests/template stay: unit tests of the program load them; the toolkit is the input's)
+        fileset = lib.fileset.difference ./. (lib.fileset.unions (map lib.fileset.maybeMissing [./site ./build ./docs ./tests/demo ./tests/sample ./tests/bare ./tests/switch ./tests/vm ./tests/home ./ext/gui_toolkit]));
       };
+      # the toolkit where the build looks for it
+      postUnpack = ''
+        mkdir -p $sourceRoot/ext
+        cp -r ${inputs.gui_toolkit} $sourceRoot/ext/gui_toolkit
+        chmod -R u+w $sourceRoot/ext/gui_toolkit
+      '';
       # the crates of the toolkit's native library, vendored: cargo makes no request
-      cargoDeps = pkgs.rustPlatform.importCargoLock {lockFile = ./ext/gui_toolkit/native/gt/Cargo.lock;};
+      cargoDeps = pkgs.rustPlatform.importCargoLock {lockFile = "${inputs.gui_toolkit}/native/gt/Cargo.lock";};
       nativeBuildInputs = [odin pkgs.cargo pkgs.rustc pkgs.clang pkgs.lld pkgs.autoPatchelfHook pkgs.copyDesktopItems pkgs.removeReferencesTo];
       buildInputs = [pkgs.fontconfig pkgs.freetype pkgs.stdenv.cc.cc.lib];
       # what it opens with dlopen goes in its RUNPATH; the Vulkan driver is the system's (/run/opengl-driver)

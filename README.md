@@ -45,6 +45,8 @@ To install a computer, start it from one of socle's images, from the
 gives a console. The installer erases one whole disk, encrypted or not, and needs UEFI and the network. From any NixOS
 live image, `nix run github:sachahjkl/socle -- install` opens the same installer.
 
+**[The documentation](https://socle.froment.software/docs/)** starts with
+[Getting started](https://socle.froment.software/docs/getting-started/) and tells each way in, step by step.
 [ROADMAP.md](ROADMAP.md) gives the plan, [src/md](src/md/README.md) the design.
 
 ## Build

@@ -127,6 +127,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 
 .download { text-align: center; margin-bottom: 72px; }
 .download h2 { font: 700 1.6rem var(--mono); }
+/* the four ways to start: two by two, one by one on a phone */
+.download .cols { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; text-align: left; margin-bottom: 24px; }
 /* a sunken well: darker face, the shadow of its rim from above, a lit lip under it */
 .well {

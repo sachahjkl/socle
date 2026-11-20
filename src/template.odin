@@ -50,48 +50,17 @@ inputs_text :: proc(inputs: []Input, allocator := context.allocator) -> string {
 	return strings.concatenate({string(data), "\n"}, allocator)
 }
 
-// A folder's inputs, from socle/inputs.json, else from its flake.lock's addresses (a folder made before inputs.json):
-// nixpkgs and socle first. In the temporary memory.
+// A folder's inputs, from socle/inputs.json: nixpkgs and socle first. In the temporary memory.
 inputs_read :: proc(folder: string) -> []Input {
 	out := make([dynamic]Input, context.temp_allocator)
-	text := read_text(join(folder, "socle", INPUTS_FILE), context.temp_allocator)
-	if text != "" {
-		v, err := json.parse_string(text, allocator = context.temp_allocator)
-		if o, ok := v.(json.Object); err == nil && ok { for k, u in o { append(&out, Input{k, str(u)}) } }
-	} else {
-		lock, err := json.parse_string(read_text(join(folder, "flake.lock"), context.temp_allocator), allocator = context.temp_allocator)
-		if err == nil {
-			roots, _ := at(lock, {"nodes", "root", "inputs"}).(json.Object)
-			for name, key in roots {
-				node := str(key)
-				if node == "" { continue }
-				if url := lock_url(at(lock, {"nodes", node, "original"})); url != "" { append(&out, Input{name, url}) }
-			}
-		}
-	}
+	v, err := json.parse_string(read_text(join(folder, "socle", INPUTS_FILE), context.temp_allocator), allocator = context.temp_allocator)
+	if o, ok := v.(json.Object); err == nil && ok { for k, u in o { append(&out, Input{k, str(u)}) } }
 	rank :: proc(n: string) -> int { return n == "nixpkgs" ? 0 : n == "socle" ? 1 : 2 }
 	slice.sort_by(out[:], proc(a, b: Input) -> bool {
 		if rank(a.name) != rank(b.name) { return rank(a.name) < rank(b.name) }
 		return a.name < b.name
 	})
 	return out[:]
-}
-
-// An input's address from its lock's "original" (the forms socle writes).
-@(private = "file")
-lock_url :: proc(o: json.Value) -> string {
-	switch str(at(o, {"type"})) {
-	case "tarball", "file": return str(at(o, {"url"}))
-	case "path":            return fmt.tprintf("path:%s", str(at(o, {"path"})))
-	case "github", "gitlab":
-		ref := str(at(o, {"ref"}))
-		return fmt.tprintf("%s:%s/%s%s", str(at(o, {"type"})), str(at(o, {"owner"})), str(at(o, {"repo"})), ref != "" ? fmt.tprintf("/%s", ref) : "")
-	case "git":
-		url := str(at(o, {"url"}))
-		if b, ok := at(o, {"submodules"}).(json.Boolean); ok && bool(b) { url = fmt.tprintf("%s%ssubmodules=1", url, strings.contains(url, "?") ? "&" : "?") }
-		return fmt.tprintf("git+%s", url)
-	}
-	return ""
 }
 
 // A link to a template: <flake reference>#<name>. Its parts, or why it is not one.
@@ -125,7 +94,7 @@ template_add :: proc(folder, link: string) -> (ref, why: string) {
 	input := template_input(name)
 	inputs := make([dynamic]Input, context.temp_allocator)
 	for i in inputs_read(folder) { if i.name != input { append(&inputs, i) } }
-	if len(inputs) < 2 { return "", "The folder's inputs cannot be read: socle/inputs.json or flake.lock." }
+	if len(inputs) < 2 { return "", "The folder has no socle/inputs.json: socle writes it when it makes a folder." }
 	append(&inputs, Input{input, url})
 	if os.write_entire_file(join(folder, "socle", INPUTS_FILE), inputs_text(inputs[:], context.temp_allocator)) != nil ||
 	   os.write_entire_file(join(folder, "flake.nix"), flake_text(inputs[:], context.temp_allocator)) != nil {

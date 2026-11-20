@@ -1,0 +1,25 @@
+# The menu of the site's Docs section (socletool docs; gui_toolkit's docs/site.md says the format).
+#   Section             a section of the menu (at the start of the line)
+#     page.md  Label    a page of it, in this order; without a label, its first heading
+
+Start
+  index.md            Overview
+  getting-started.md  Getting started
+
+Install
+  install.md          Install a computer
+  take-over.md        Take over your NixOS
+  home.md             A home on any Linux
+
+Use
+  using.md            Everyday use
+  templates.md        Templates
+
+Reference
+  folder.md           The folder
+  commands.md         Commands
+  troubleshooting.md  When something fails
+
+Contribute
+  development.md      Develop socle
+  mockups/README.md   The mockups

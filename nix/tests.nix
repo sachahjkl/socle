@@ -317,6 +317,16 @@ in {
           "nix flake lock path:/tmp/folder && sed -i '/\"submodules\": true,/d' /tmp/folder/flake.lock",
       )
 
+      # an install that stops after the format (a module that breaks the system, not the disk's script) leaves /mnt
+      # free: the next try starts again
+      installer.succeed(
+          "cp -r /tmp/folder /tmp/broken && mkdir -p /tmp/broken/custom",
+          "echo '{ environment.etc.broken.text = throw \"broken on purpose\"; }' > /tmp/broken/custom/broken.nix",
+      )
+      rc, out = installer.execute("socle helper install /tmp/broken 2>&1 | grep -v '^@nix {\"action\":\"\\(start\\|stop\\|result\\)\"' ; exit ''${PIPESTATUS[0]}")
+      assert rc != 0 and "@socle Build" in out and "broken on purpose" in out, "the broken folder did not stop at its build"
+      installer.fail("findmnt /mnt")
+
       # (nix's messages kept, its progress left out)
       rc, out = installer.execute("socle helper install /tmp/folder 2>&1 | grep -v '^@nix {\"action\":\"\\(start\\|stop\\|result\\)\"' ; exit ''${PIPESTATUS[0]}")
       print(out)

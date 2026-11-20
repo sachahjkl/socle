@@ -1,4 +1,5 @@
-# Publishes site/ to GitHub Pages with the pages socletool makes of it and of CHANGELOG.md (socletool site build).
+# Publishes site/ to GitHub Pages with the pages socletool makes of it, of CHANGELOG.md and of docs/*.md (socletool
+# site build: the Docs section too).
 # Pages use the "GitHub Actions" source (set once: gh api -X POST repos/sachahjkl/socle/pages -f build_type=workflow).
 name: Pages
 
@@ -7,6 +8,7 @@ on:
     branches: [master]
     paths:
       - "site/**"
+      - "docs/**"
       - "CHANGELOG.md"
       - "tools/socletool/**"
       - ".github/workflows/pages.yml"

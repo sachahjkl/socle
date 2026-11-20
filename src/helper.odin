@@ -177,7 +177,7 @@ helper_collect :: proc(count: string) -> int {
 	return 0
 }
 
-SOCLE_URL   :: "git+https://github.com/sachahjkl/socle?submodules=1"
+SOCLE_URL   :: "github:sachahjkl/socle"
 NIXPKGS_URL :: "https://flakehub.com/f/NixOS/nixpkgs/0.2605"
 
 // /etc/socle from a template: the flake, the system's layer, this machine's layer (its name, its people, its

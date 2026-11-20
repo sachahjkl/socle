@@ -57,7 +57,7 @@ chain that loops is refused when the configuration is evaluated.
 - The Templates page takes `<flake reference>#<name>`. socle adds the flake as an input of the folder's `flake.nix`
   and points the person's layer at `<input>#<name>`; the evaluation locks the input.
 - socle writes `flake.nix` from data, `socle/inputs.json` (each input's name and address), and never reads the Nix of
-  it. A folder made before `inputs.json` existed gets one from its `flake.lock`'s addresses.
+  it. A folder without `inputs.json` takes no link: before 1.0, socle keeps no path for folders of its earlier forms.
 - The gallery lists the templates of every input that has `socleTemplates`, with a mark when a template carries Nix
   code.
 

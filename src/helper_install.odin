@@ -57,6 +57,12 @@ helper_install :: proc(folder: string) -> int {
 	// in git below: a path: flake's lock does not suit it)
 	disko := install_build(fmt.tprintf("path:%s#nixosConfigurations.%s.config.system.build.diskoScript", folder, target.host), "", "--no-write-lock-file")
 	if disko == "" { return helper_fail("the disk's script could not be built") }
+	// (an install that stops after this leaves nothing mounted nor open: the next try starts from a free /mnt)
+	installed := false
+	defer if !installed {
+		_ = run({SW + "umount", "-R", INSTALL_ROOT}, allocator = context.temp_allocator)
+		if target.encrypt { _ = run({SW + "cryptsetup", "close", "system"}, allocator = context.temp_allocator) }
+	}
 	if r := run_said({disko, "--yes-wipe-all-disks"}); !r.ok { return helper_fail(fmt.tprintf("%s could not be formatted", target.disk)) }
 
 	say_step(.Folder)
@@ -103,6 +109,7 @@ helper_install :: proc(folder: string) -> int {
 	if r := run_said({SW + "nixos-install", "--root", INSTALL_ROOT, "--system", system, "--no-root-passwd", "--no-channel-copy"}); !r.ok {
 		return helper_fail("the system could not be installed")
 	}
+	installed = true
 	say_step(.Done)
 	return 0
 }
