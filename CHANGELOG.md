@@ -3,6 +3,14 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.8.0] - 2026-11-21 10:13
+
+### Added
+- **Lower latency on Linux**: during an animation or a drag, each frame starts as late as it can and still reaches the next refresh, so it shows the newest input.
+
+### Changed
+- **Every menu filters what is typed**: a field at the top of a menu keeps the items that match.
+
 ## [0.7.0] - 2026-11-20 10:58
 
 ### Added
@@ -65,6 +73,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.8.0]: https://github.com/sachahjkl/socle/releases/tag/v0.8.0
 [0.7.0]: https://github.com/sachahjkl/socle/releases/tag/v0.7.0
 [0.6.0]: https://github.com/sachahjkl/socle/releases/tag/v0.6.0
 [0.5.0]: https://github.com/sachahjkl/socle/releases/tag/v0.5.0
