@@ -17,7 +17,7 @@
     # the toolkit the program is built on: the same commit as the ext/gui_toolkit submodule (socletool check says so). An
     # input, not the submodule, for the package: a github: flake comes without its submodules
     gui_toolkit = {
-      url = "github:sachahjkl/gui_toolkit/v0.338.0";
+      url = "github:sachahjkl/gui_toolkit/v0.339.0";
       flake = false;
     };
     # a home on any system (src/md/data/targets.md): Home Manager on its own, NixOS or not
