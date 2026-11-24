@@ -1,24 +1,31 @@
 package socle
 
-// The two big lists: every package of the locked Nixpkgs (the Apps page) and every option of the system (All settings),
-// each read once on a worker and kept; each query is searched on a worker, numbered: only the newest answer shows
-// (src/md/features/apps.md, all-settings.md).
+// The big lists: every package of the locked Nixpkgs (the Apps page), every option of the system (All settings) and
+// every time zone (Region), each read once on a worker and kept; each query is searched on a worker, numbered: only
+// the newest answer shows (src/md/features/apps.md, all-settings.md, region.md).
 
+import "base:runtime"
 import "core:encoding/json"
 import "core:fmt"
+import "core:math"
 import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:strings"
+import "core:time"
+import "core:time/timezone"
 import "gt:ui"
 
 Index_State :: enum { Absent, Building, Ready, Failed }
 
+Index_Kind :: enum { Packages, Options, Zones }
+
 Entry :: struct {
-	key:         string,   // a package's attribute, an option's path
-	name:        string,   // a package's pname; an option's type
+	key:         string,   // a package's attribute, an option's path, a zone's IANA name
+	name:        string,   // a package's pname; an option's type; a zone's offset now ("UTC+1")
 	version:     string,   // a package's version; an option's default, as Nix writes it
-	description: string,
+	description: string,   // a zone's: its name in words and its offset, what a search reads
+	offset:      int,      // a zone's offset from UTC now, in seconds
 }
 
 Index :: struct {
@@ -39,7 +46,7 @@ HITS_MAX :: 120
 Index_Build :: struct {
 	app:   ^App,
 	index: ^Index,
-	kind:  enum { Packages, Options },
+	kind:  Index_Kind,
 	from:  string,   // the locked Nixpkgs, or the folder and its host
 	host:  string,
 	arena: virtual.Arena,
@@ -47,16 +54,18 @@ Index_Build :: struct {
 	why:   string,
 }
 
-// The index asked for when a page needs it; read once per session.
-index_need :: proc(app: ^App, index: ^Index, options: bool) {
-	if index.state != .Absent || app.source != .Folder || app.info == nil { return }
+// The index asked for when a page needs it; read once per session. The zones are the system's, not the folder's: the
+// demo has them too.
+index_need :: proc(app: ^App, index: ^Index, kind: Index_Kind) {
+	if index.state != .Absent { return }
+	if kind != .Zones && (app.source != .Folder || app.info == nil) { return }
 	index.state = .Building
 	b := new(Index_Build)
-	b.app, b.index = app, index
-	if options {
-		b.kind, b.from, b.host = .Options, strings.clone(app.folder), strings.clone(app.host)
-	} else {
-		b.kind, b.from = .Packages, strings.clone(app.info.nixpkgs)
+	b.app, b.index, b.kind = app, index, kind
+	switch kind {
+	case .Options:  b.from, b.host = strings.clone(app.folder), strings.clone(app.host)
+	case .Packages: b.from = strings.clone(app.info.nixpkgs)
+	case .Zones:
 	}
 	ui.task(&app.main.state, index_work, index_done, b, index_lost)
 }
@@ -95,8 +104,47 @@ index_work :: proc(data: rawptr) {
 			if ro, _ := at_(o, "readOnly").(json.Boolean); ro { continue }
 			append(&b.entries, Entry{key = k, name = str(at_(o, "type")), version = str(at(o, {"default", "text"})), description = str(at_(o, "description"))})
 		}
+	case .Zones:
+		r := run({"timedatectl", "list-timezones"}, allocator = a)
+		if !r.ok { b.why = strings.clone(strings.trim_space(r.stderr) != "" ? strings.trim_space(r.stderr) : "the time zones cannot be read"); return }
+		now := time.now()
+		for line in strings.split_lines(strings.trim_space(r.stdout), a) {
+			if line == "" { continue }
+			offset := zone_offset(line, now)
+			words, _ := strings.replace_all(line, "_", " ", a)
+			words, _ = strings.replace_all(words, "/", " ", a)
+			o := offset_words(offset, a)
+			append(&b.entries, Entry{key = line, name = o, description = fmt.aprintf("%s %s", words, o, allocator = a), offset = offset})
+		}
 	}
 	slice.sort_by(b.entries[:], proc(x, y: Entry) -> bool { return x.key < y.key })
+}
+
+// The offset of zone `name` from UTC at `now`, in seconds (0: UTC, or a zone the tz database lacks).
+zone_offset :: proc(name: string, now: time.Time) -> int {
+	// (each zone's rules go with it: six hundred of them in one worker's temporary memory add up)
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	region, ok := timezone.region_load(name, context.temp_allocator)
+	if !ok || region == nil { return 0 }
+	// (the time there as a date without its zone, read back as a time: the gap to now is the offset)
+	utc, uok := time.time_to_datetime(now)
+	if !uok { return 0 }
+	local, lok := timezone.datetime_to_tz(utc, region)
+	if !lok { return 0 }
+	local.tz = nil
+	there, tok := time.datetime_to_time(local)
+	if !tok { return 0 }
+	// (now has its fraction of a second, the date read back has none)
+	return int(math.round(time.duration_seconds(time.diff(now, there))))
+}
+
+// "UTC", "UTC+1", "UTC-3:30": whole hours without their minutes, so that "utc+9" finds Tokyo.
+offset_words :: proc(seconds: int, allocator := context.temp_allocator) -> string {
+	if seconds == 0 { return strings.clone("UTC", allocator) }
+	s := abs(seconds)
+	sign := seconds < 0 ? "-" : "+"
+	if s % 3600 == 0 { return fmt.aprintf("UTC%s%d", sign, s / 3600, allocator = allocator) }
+	return fmt.aprintf("UTC%s%d:%02d", sign, s / 3600, s % 3600 / 60, allocator = allocator)
 }
 
 at_ :: proc(v: json.Value, key: string) -> json.Value { return at(v, {key}) }

@@ -2,6 +2,16 @@
   "socle": 1,
   "template": "socle#minimal",
   "values": {
+    "i18n": {
+      "defaultLocale": "fr_FR.UTF-8"
+    },
+    "services": {
+      "xserver": {
+        "xkb": {
+          "layout": "fr"
+        }
+      }
+    },
     "socle": {
       "base": {
         "bootvine": false,
@@ -13,6 +23,9 @@
           "description": "Ada"
         }
       }
+    },
+    "time": {
+      "timeZone": "Europe/Paris"
     }
   }
 }

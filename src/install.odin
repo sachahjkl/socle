@@ -73,6 +73,10 @@ plan_write :: proc(dir: string, p: Plan) -> string {
 	layer_set_template(&system, p.template)
 	layer_set(&system, {"socle", "people", p.login, "description"}, json.String(strings.clone(p.name)))
 	layer_set(&system, {"socle", "people", p.login, "admin"}, json.Boolean(true))
+	// (the region in the person's layer: the Region page changes it there, region.md)
+	layer_set(&system, {"i18n", "defaultLocale"}, json.String(strings.clone(p.locale)))
+	layer_set(&system, {"time", "timeZone"}, json.String(strings.clone(p.zone)))
+	layer_set(&system, {"services", "xserver", "xkb", "layout"}, json.String(strings.clone(p.keyboard)))
 
 	machine := layer_parse("")
 	defer layer_destroy(&machine)
@@ -81,11 +85,6 @@ plan_write :: proc(dir: string, p: Plan) -> string {
 	layer_set(&machine, {"socle", "disk", "device"}, json.String(strings.clone(p.disk)))
 	if p.encrypt { layer_set(&machine, {"socle", "disk", "encrypt"}, json.Boolean(true)) }
 	layer_set(&machine, {"socle", "people", p.login, "hashedPassword"}, json.String(strings.clone(p.hash)))
-	layer_set(&machine, {"i18n", "defaultLocale"}, json.String(strings.clone(p.locale)))
-	layer_set(&machine, {"time", "timeZone"}, json.String(strings.clone(p.zone)))
-	// (one keyboard for the desktop and the console: the passphrase typed at the start is the one typed here)
-	layer_set(&machine, {"services", "xserver", "xkb", "layout"}, json.String(strings.clone(p.keyboard)))
-	layer_set(&machine, {"console", "useXkbConfig"}, json.Boolean(true))
 
 	inputs := inputs_default(p.nixpkgs, p.socle)
 	writes := [][2]string{

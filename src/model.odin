@@ -523,6 +523,16 @@ change_words :: proc(app: ^App, path: string, now: json.Value) -> (page: string,
 		return "Desktop", fmt.aprintf("Log in by itself as %s", person_title(app, str(shown))), false
 	case path == "socle.desktop.lockAfter":
 		return "Desktop", fmt.aprintf("Lock the screen: %s", lock_title(int(num(shown)))), false
+	case path == ZONE_PATH:
+		return "Region", fmt.aprintf("Time zone: %s", str(shown)), false
+	case path == LOCALE_PATH:
+		name := str(shown)
+		for l in LANGUAGES { if l.locale == name { name = l.title } }
+		return "Region", fmt.aprintf("Language: %s", name), false
+	case path == KEYBOARD_PATH:
+		name := str(shown)
+		for k in KEYBOARDS { if k[1] == name { name = k[0] } }
+		return "Region", fmt.aprintf("Keyboard: %s", name), false
 	case strings.has_prefix(path, "socle.people."):
 		rest := path[len("socle.people."):]
 		login := rest[:strings.index_byte(rest, '.') if strings.index_byte(rest, '.') >= 0 else len(rest)]

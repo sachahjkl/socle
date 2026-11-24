@@ -10,7 +10,7 @@ administrator edits the draft without root, and only the switch needs root.
   flake.nix                  generated, a fixed form: the inputs and one call to socle's library
   flake.lock
   socle/system.json          the person's layer for every machine of this folder
-  socle/hosts/<host>.json    the person's layer for one machine: its name, its people, its secrets
+  socle/hosts/<host>.json    the layer of one machine: its release, its disk, its passwords
   hosts/<host>/facter.json   the hardware report of the machine (nixos-facter), data too
   custom/*.nix               the person's Nix, imported as it is
 ```

@@ -378,7 +378,7 @@ apps_page :: proc(app: ^App, em: f32) {
 		weak("The demo searches its popular apps only: a real system searches every package of its Nixpkgs.", "apps_demo")
 		return
 	}
-	index_need(app, &app.catalogue, false)
+	index_need(app, &app.catalogue, .Packages)
 	index_search(app, &app.catalogue, query)
 	switch app.catalogue.state {
 	case .Absent, .Building:
@@ -815,7 +815,7 @@ settings_page :: proc(app: ^App, em: f32) {
 			every := query != "" && app.source == .Folder
 			if every {
 				// (every option of the system: its index, built once)
-				index_need(app, &app.options_index, true)
+				index_need(app, &app.options_index, .Options)
 				index_search(app, &app.options_index, query)
 				#partial switch app.options_index.state {
 				case .Absent, .Building: ui.button("###options_busy", "Reading every option: a minute the first time", o = {face = .Ghost, busy = true, size = .Small})

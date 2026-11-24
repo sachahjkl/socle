@@ -291,6 +291,12 @@ script :: proc(t: ^Take) {
 	film.wheel(r, {0, 5}, 0.6)
 	film.hold(r, 0.9)
 	film.key(r, .Escape, after = 0.5)
+	// the region: a time zone found by its city
+	tap(t, "nav_Region", after = 0.8)
+	tap(t, "zone_field", after = 0.2)
+	film.type_text(r, "tokyo", 9)
+	film.hold(r, 0.8)
+	tap(t, "zone_hit0", after = 1.0)
 	point(t, "changes_count", after = 0.6)
 
 	// the review, now, on trial

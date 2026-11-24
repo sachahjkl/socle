@@ -4,6 +4,12 @@ _: let
   page = title: icon: order: options: {inherit title icon order options;};
 in {
   config.socle.ui.pages = {
+    # (socle's own page: the window draws it, from these options' values)
+    region = page "Region" "globe" 9 [
+      "time.timeZone"
+      "i18n.defaultLocale"
+      "services.xserver.xkb.layout"
+    ];
     hardware = page "Hardware" "cpu" 11 [
       "hardware.bluetooth.enable"
       "hardware.graphics.enable32Bit"

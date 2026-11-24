@@ -26,7 +26,7 @@ WINDOW_SIZE :: [2]int{1280, 800}
 
 // The pages of the sidebar: socle's own, then the features' pages that the evaluation lists (generic: made from their
 // options' declarations).
-Page :: enum { Overview, Apps, People, Desktop, Feature, Updates, History, Templates, All_Settings }
+Page :: enum { Overview, Apps, People, Desktop, Region, Feature, Updates, History, Templates, All_Settings }
 
 App :: struct {
 	shared:    host.Shared,
@@ -68,6 +68,7 @@ App :: struct {
 	category:    string,         // Apps: the category shown ("": all)
 	option:      string,         // All settings: the option shown
 	options_search: ui.Line_Edit,
+	zone_search:    ui.Line_Edit,
 	new_person:  ui.Line_Edit,   // People: a login to add
 	setup_ref:   int,            // Setup: the template chosen
 	setup_sure:  bool,
@@ -80,6 +81,7 @@ App :: struct {
 	// the two big lists (search.odin)
 	catalogue:     Index,
 	options_index: Index,
+	zones:         Index,
 	option_values: map[string]string,   // an option's value, evaluated when it was first shown
 	option_asked:  map[string]bool,
 }
@@ -196,9 +198,11 @@ close :: proc(app: ^App) {
 	info_destroy(app.info)
 	ui.line_edit_destroy(&app.search)
 	ui.line_edit_destroy(&app.options_search)
+	ui.line_edit_destroy(&app.zone_search)
 	ui.line_edit_destroy(&app.new_person)
 	index_destroy(&app.catalogue)
 	index_destroy(&app.options_index)
+	index_destroy(&app.zones)
 	for k, v in app.option_values { delete(k); delete(v) }
 	delete(app.option_values)
 	for k in app.option_asked { delete(k) }

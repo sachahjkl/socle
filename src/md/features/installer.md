@@ -16,15 +16,17 @@ folder and nothing else.
   step.
 - A test can give its own folder, with its own hardware, and know in advance the exact system that results
   (`nix build .#tests.install`).
-- The system layer holds what could be shared (the template, the person); the machine's layer holds what belongs to
-  this machine alone (its disk, its language, the password's hash).
+- The system layer holds what could be shared and what the window changes later (the template, the person, the
+  region); the machine's layer holds what belongs to this machine alone (its release, its disk, the password's hash).
+  The window never writes the machine's layer: a value there could not be changed from a page (region.md).
 - The disk's passphrase is never in the folder (it is committed): it waits beside it, in `<folder>.key`, readable by
   its owner only. The helper moves it to `/run/socle/disk.key`, which disko reads at the format, and removes it.
 
 ## The steps
 
 1. **Language, keyboard, time zone.** One keyboard for the desktop and the console (`console.useXkbConfig`): the
-   passphrase typed at each start is typed on the keyboard chosen here.
+   passphrase typed at each start is typed on the keyboard chosen here. The language gives its time zone; the person
+   searches another, as on the Region page (region.md).
 2. **Disk.** One whole disk, encrypted or not. `nix/modules/disk.nix` turns `socle.disk` into disko's
    configuration: a 1 GiB boot partition, then btrfs with the subvolumes `/`, `/home` and `/nix` (LUKS around it when
    encrypted). A disk shared with another system is not in the first version.

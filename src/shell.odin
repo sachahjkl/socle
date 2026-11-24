@@ -12,12 +12,12 @@ import lucide "gt:lucide"
 import "gt:ui"
 
 PAGE_TITLES := [Page]string{
-	.Overview = "Overview", .Apps = "Apps", .People = "People", .Desktop = "Desktop", .Feature = "",
+	.Overview = "Overview", .Apps = "Apps", .People = "People", .Desktop = "Desktop", .Region = "Region", .Feature = "",
 	.Updates = "Updates", .History = "History", .Templates = "Templates", .All_Settings = "All settings",
 }
 
 PAGE_ICONS := [Page]string{
-	.Overview = lucide.LAYOUT_DASHBOARD, .Apps = lucide.PACKAGE, .People = lucide.USERS, .Desktop = lucide.MONITOR,
+	.Overview = lucide.LAYOUT_DASHBOARD, .Apps = lucide.PACKAGE, .People = lucide.USERS, .Desktop = lucide.MONITOR, .Region = lucide.GLOBE,
 	.Feature = lucide.SLIDERS_HORIZONTAL, .Updates = lucide.REFRESH_CW, .History = lucide.HISTORY,
 	.Templates = lucide.LAYOUT_GRID, .All_Settings = lucide.SLIDERS_HORIZONTAL,
 }
@@ -35,12 +35,13 @@ icon_named :: proc(name: string) -> string {
 	case "monitor":   return lucide.MONITOR
 	case "package":   return lucide.PACKAGE
 	case "users":     return lucide.USERS
+	case "globe":     return lucide.GLOBE
 	}
 	return lucide.SLIDERS_HORIZONTAL
 }
 
 // socle's own pages that a feature's page stands for: they have a page of their own.
-OWN_PAGES :: [?]string{"apps", "desktop", "people"}
+OWN_PAGES :: [?]string{"apps", "desktop", "people", "region"}
 
 build :: proc(h: ^host.Host, size: host.Vec2) {
 	app := (^App)(h.user)
@@ -100,6 +101,7 @@ page_build :: proc(app: ^App, em: f32) {
 	case .Apps:         apps_page(app, em)
 	case .People:       people_page(app, em)
 	case .Desktop:      desktop_page(app, em)
+	case .Region:       region_page(app, em)
 	case .Feature:      feature_page(app, em)
 	case .Updates:      updates_page(app, em)
 	case .History:      history_page(app, em)
@@ -170,7 +172,7 @@ sidebar :: proc(app: ^App, em: f32) {
 				if nav_line(app, "Overview", "Overview", PAGE_ICONS[.Overview], app.page == .Overview, em) { app.page = .Overview }
 				nav_group(app.target == .Home ? "Home" : "System", em)
 				// (socle's own pages, where the target's evaluation lists them: a home has no people, no desktop)
-				OWN := [3]struct { page: Page, id: string }{{.Apps, "apps"}, {.People, "people"}, {.Desktop, "desktop"}}
+				OWN := [4]struct { page: Page, id: string }{{.Apps, "apps"}, {.People, "people"}, {.Desktop, "desktop"}, {.Region, "region"}}
 				for o in OWN {
 					listed := app.info == nil
 					if app.info != nil { for def in app.info.pages { listed ||= def.id == o.id } }

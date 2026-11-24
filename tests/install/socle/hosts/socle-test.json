@@ -1,19 +1,6 @@
 {
   "socle": 1,
   "values": {
-    "console": {
-      "useXkbConfig": true
-    },
-    "i18n": {
-      "defaultLocale": "fr_FR.UTF-8"
-    },
-    "services": {
-      "xserver": {
-        "xkb": {
-          "layout": "fr"
-        }
-      }
-    },
     "socle": {
       "disk": {
         "device": "/dev/vda"
@@ -26,9 +13,6 @@
     },
     "system": {
       "stateVersion": "26.05"
-    },
-    "time": {
-      "timeZone": "Europe/Paris"
     }
   }
 }

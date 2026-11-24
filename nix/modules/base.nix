@@ -60,6 +60,8 @@ in {
       };
       time.timeZone = lib.mkDefault "Europe/Paris";
       i18n.defaultLocale = lib.mkDefault "en_US.UTF-8";
+      # (one keyboard for the desktop and the console: the passphrase typed at the start is the one chosen; region.md)
+      console.useXkbConfig = lib.mkDefault true;
       system.stateVersion = lib.mkDefault "26.05";
     })
   ];

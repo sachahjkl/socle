@@ -97,6 +97,8 @@ These tests come before any window, because each one can break the design:
   concepts
 - [features/installer.md](features/installer.md): the install from the live image, the disk, the hardware, the first
   start
+- [features/region.md](features/region.md): the time zone, the language and the keyboard after the install: why they
+  live in the person's layer, the zones searched with their offsets, the short lists of the installer
 - [features/images.md](features/images.md): socle's live images, the base of every system (Determinate Nix, nh,
   nix-output-monitor), the command line
 - [infrastructure/helper.md](infrastructure/helper.md): the root service, its verbs, its checks, polkit, the switch

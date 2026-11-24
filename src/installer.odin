@@ -57,8 +57,7 @@ Installer :: struct {
 	page:        Install_Page,
 	language:    int,
 	keyboard:    int,
-	zone:        int,
-	zones:       [dynamic]string,
+	zone:        string,   // an IANA name (owned): the language's until the person picks another
 	// the network
 	online:      bool,
 	checked:     bool,   // the network's state is known
@@ -99,8 +98,8 @@ installer_open :: proc(app: ^App) {
 	ins := new(Installer)
 	app.installer = ins
 	ins.disk = -1
-	ins.zone = -1
 	ins.gallery = templates_of(.System)
+	zone_suggest(ins)
 	if app.source == .Demo {
 		installer_demo_machine(ins)
 		return
@@ -111,8 +110,7 @@ installer_open :: proc(app: ^App) {
 installer_close :: proc(app: ^App) {
 	ins := app.installer
 	if ins == nil { return }
-	for z in ins.zones { delete(z) }
-	delete(ins.zones)
+	delete(ins.zone)
 	wifis_clear(&ins.wifis)
 	delete(ins.wifis)
 	disks_clear(&ins.disks)
@@ -147,7 +145,6 @@ wifis_clear :: proc(ws: ^[dynamic]Wifi) {
 Machine_Read :: struct {
 	app:    ^App,
 	disks:  [dynamic]Disk_Info,
-	zones:  [dynamic]string,
 	wifis:  [dynamic]Wifi,
 	online: bool,
 }
@@ -157,10 +154,6 @@ machine_work :: proc(data: rawptr) {
 	m := (^Machine_Read)(data)
 	m.disks = disks_read()
 	m.online, m.wifis = network_read()
-	z := run({"timedatectl", "list-timezones"}, allocator = context.temp_allocator)
-	for line in strings.split_lines(strings.trim_space(z.stdout), context.temp_allocator) {
-		if line != "" { append(&m.zones, strings.clone(line)) }
-	}
 }
 
 @(private = "file")
@@ -172,14 +165,10 @@ machine_done :: proc(data: rawptr, _: u64) {
 	delete(ins.disks)
 	ins.disks = m.disks
 	ins.disks_read = true
-	for z in ins.zones { delete(z) }
-	delete(ins.zones)
-	ins.zones = m.zones
 	wifis_clear(&ins.wifis)
 	delete(ins.wifis)
 	ins.wifis = m.wifis
 	ins.online, ins.checked = m.online, true
-	zone_suggest(ins)
 	free(m)
 }
 
@@ -247,21 +236,15 @@ network_read :: proc() -> (online: bool, wifis: [dynamic]Wifi) {
 installer_demo_machine :: proc(ins: ^Installer) {
 	append(&ins.disks, Disk_Info{path = strings.clone("/dev/disk/by-id/nvme-Samsung_SSD_990_PRO_2TB"), model = strings.clone("Samsung SSD 990 PRO"), size = 2000398934016, in_use = strings.clone("")})
 	append(&ins.disks, Disk_Info{path = strings.clone("/dev/disk/by-id/usb-SanDisk_Ultra"), model = strings.clone("SanDisk Ultra"), size = 30752636928, in_use = strings.clone("In use: the install medium, or mounted")})
-	for z in ([]string{"America/New_York", "Europe/Berlin", "Europe/London", "Europe/Madrid", "Europe/Paris", "Europe/Rome", "UTC"}) {
-		append(&ins.zones, strings.clone(z))
-	}
 	append(&ins.wifis, Wifi{ssid = strings.clone("Maison"), signal = 82, secured = true})
 	ins.online, ins.checked, ins.disks_read = true, true, true
-	zone_suggest(ins)
 }
 
-// The time zone that the language suggests, while none is chosen.
+// The time zone that the language suggests.
 @(private = "file")
 zone_suggest :: proc(ins: ^Installer) {
-	want := LANGUAGES[ins.language].zone
-	for z, i in ins.zones { if z == want { ins.zone = i; return } }
-	for z, i in ins.zones { if z == "UTC" { ins.zone = i; return } }
-	if len(ins.zones) > 0 { ins.zone = 0 }
+	delete(ins.zone)
+	ins.zone = strings.clone(LANGUAGES[ins.language].zone)
 }
 
 ////////////////////////////////
@@ -282,7 +265,7 @@ installer_plan :: proc(ins: ^Installer) -> Plan {
 	lang := LANGUAGES[ins.language]
 	p := Plan{
 		host = machine_name(ins), locale = lang.locale, keyboard = KEYBOARDS[ins.keyboard][1],
-		zone = ins.zone >= 0 && ins.zone < len(ins.zones) ? ins.zones[ins.zone] : "UTC",
+		zone = ins.zone,
 		login = strings.trim_space(ui.line_edit_string(&ins.login)), name = strings.trim_space(ui.line_edit_string(&ins.name)),
 		hash = "$", encrypt = ins.encrypt, passphrase = ui.line_edit_string(&ins.passphrase),
 	}
@@ -297,7 +280,7 @@ installer_plan :: proc(ins: ^Installer) -> Plan {
 page_blocked :: proc(ins: ^Installer) -> string {
 	switch ins.page {
 	case .Language:
-		if ins.zone < 0 { return "Choose a time zone." }
+		// (the language always gives a time zone: nothing to choose before going on)
 	case .Network:
 		if !ins.online { return "socle downloads the system: connect to a network." }
 	case .Disk:
@@ -650,11 +633,9 @@ language_page :: proc(app: ^App, em: f32) {
 	ui.spacer(ui.px(em * 0.5))
 	weak("The same keyboard at each start, where the disk's passphrase is typed.", "keyboard_note")
 	section("Time zone", em)
-	if len(ins.zones) == 0 {
-		ui.button("###zones_busy", "Reading the time zones", o = {face = .Ghost, busy = true})
-	} else {
-		ui.next({width = ui.fill()})
-		_ = ui.dropdown("###zone", ins.zones[:], &ins.zone)
+	if picked, ok := zone_picker(app, ins.zone, false, em); ok {
+		delete(ins.zone)
+		ins.zone = strings.clone(picked)
 	}
 }
 
@@ -876,4 +857,3 @@ restart :: proc(app: ^App) {
 	if app.source == .Demo { ui.announce(&app.announcer, .Info, "The demo does not restart", ""); return }
 	ui.task(&app.main.state, proc(_: rawptr) { _ = run({"systemctl", "reboot"}, allocator = context.temp_allocator) }, proc(_: rawptr, _: u64) {}, nil, proc(_: rawptr) {})
 }
-
