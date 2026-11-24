@@ -3,6 +3,7 @@ package socletool
 import "core:fmt"
 import "core:os"
 import cli "gt:cli"
+import process "gt:process"
 import toolbox "gt:toolbox"
 
 DEMO_OUT :: "src/demo/info.json"
@@ -13,14 +14,13 @@ GALLERY_OUT :: "src/demo/gallery.json"
 // the tests). An evaluation kept, so the demo needs no nix and gives the same pictures each time.
 demo_run :: proc(args: []string) -> cli.Exit {
 	expr := `let f = builtins.getFlake (toString ./.); in (f.lib.configuration { inputs = f.inputs // { self = f; }; root = ./tests/demo; }).socleInfo.house-laptop`
-	env, _ := os.environ(context.temp_allocator)
-	state, out, errs, err := os.process_exec({command = {"nix", "eval", "--json", "--impure", "--no-warn-dirty", "--expr", expr}, env = env}, context.temp_allocator)
-	if err != nil || !state.exited || state.exit_code != 0 {
-		fmt.eprint(string(errs))
+	r := process.run({"nix", "eval", "--json", "--impure", "--no-warn-dirty", "--expr", expr}, allocator = context.temp_allocator)
+	if !r.ok {
+		fmt.eprint(r.stderr)
 		return toolbox.done("nix eval of tests/demo failed (its files must be known to git)")
 	}
 	_ = os.make_directory_all("src/demo")
-	if os.write_entire_file(DEMO_OUT, out) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", DEMO_OUT)) }
+	if os.write_entire_file(DEMO_OUT, r.stdout) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", DEMO_OUT)) }
 	fmt.printfln("wrote %s", DEMO_OUT)
 	// (its layer beside it: the program embeds both, and its package has no tests/ folder)
 	layer, rerr := os.read_entire_file_from_path("tests/demo/socle/system.json", context.temp_allocator)
@@ -31,12 +31,12 @@ demo_run :: proc(args: []string) -> cli.Exit {
 	fmt.println("wrote src/demo/host.json")
 	// (every template, of both targets: the installer and the start of a home list them before any folder evaluates)
 	gallery := `let f = builtins.getFlake (toString ./.); in builtins.attrValues (builtins.mapAttrs (n: t: { ref = "socle#${n}"; inherit (t) title description target; parent = t.parent or null; }) f.socleTemplates)`
-	gs, gout, gerrs, gerr := os.process_exec({command = {"nix", "eval", "--json", "--impure", "--no-warn-dirty", "--expr", gallery}, env = env}, context.temp_allocator)
-	if gerr != nil || !gs.exited || gs.exit_code != 0 {
-		fmt.eprint(string(gerrs))
+	g := process.run({"nix", "eval", "--json", "--impure", "--no-warn-dirty", "--expr", gallery}, allocator = context.temp_allocator)
+	if !g.ok {
+		fmt.eprint(g.stderr)
 		return toolbox.done("nix eval of the templates failed")
 	}
-	if os.write_entire_file(GALLERY_OUT, gout) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", GALLERY_OUT)) }
+	if os.write_entire_file(GALLERY_OUT, g.stdout) != nil { return toolbox.done(fmt.tprintf("%s cannot be written", GALLERY_OUT)) }
 	fmt.printfln("wrote %s", GALLERY_OUT)
 	return .Done
 }
