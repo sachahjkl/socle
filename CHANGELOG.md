@@ -3,6 +3,11 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.9.0] - 2026-11-24 11:22
+
+### Added
+- **A Region page**: the time zone, the language and the keyboard change after the install. A time zone is found by its city, its country or its offset (paris, new york, utc+9), and shows its time now; the installer searches its time zone the same way.
+
 ## [0.8.0] - 2026-11-21 10:13
 
 ### Added
@@ -73,6 +78,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.9.0]: https://github.com/sachahjkl/socle/releases/tag/v0.9.0
 [0.8.0]: https://github.com/sachahjkl/socle/releases/tag/v0.8.0
 [0.7.0]: https://github.com/sachahjkl/socle/releases/tag/v0.7.0
 [0.6.0]: https://github.com/sachahjkl/socle/releases/tag/v0.6.0
