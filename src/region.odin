@@ -108,8 +108,9 @@ zone_entry :: proc(app: ^App, name: string) -> (Entry, bool) {
 @(private = "file")
 zone_hits :: proc(app: ^App, current: string, em: f32) -> (picked: string, ok: bool) {
 	query := strings.to_lower(strings.trim_space(ui.line_edit_string(&app.zone_search)), context.temp_allocator)
-	if query == "" { return "", false }
+	// (an empty query too: its answer empties the hits, so a new query never shows the hits of one before it)
 	index_search(app, &app.zones, query)
+	if query == "" { return "", false }
 	ui.spacer(ui.px(em * 0.6))
 	switch app.zones.state {
 	case .Absent, .Building:
@@ -117,8 +118,11 @@ zone_hits :: proc(app: ^App, current: string, em: f32) -> (picked: string, ok: b
 	case .Failed:
 		note_well("zones", lucide.ALERT_TRIANGLE, .Red, "The time zones cannot be read", app.zones.why, em)
 	case .Ready:
-		if app.zones.query != query || app.zones.answered != app.zones.asked { return }
-		if len(app.zones.hits) == 0 { weak("No time zone says that.", "zones_none"); return }
+		// (while the newest query is searched, the last answer stays: an empty list at each key made the page blink)
+		if len(app.zones.hits) == 0 {
+			if index_answered(&app.zones, query) { weak("No time zone says that.", "zones_none") }
+			return
+		}
 		if ui.list_card("###zone_hits") {
 			for e, i in app.zones.hits {
 				if i >= ZONE_HITS { break }

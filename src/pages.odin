@@ -372,7 +372,11 @@ apps_page :: proc(app: ^App, em: f32) {
 			shown += 1
 		}
 	}
-	if query == "" { return }
+	if query == "" {
+		// (its answer empties the hits: a new query never shows the hits of one before it)
+		index_search(app, &app.catalogue, "")
+		return
+	}
 	section("Every package", em)
 	if app.source == .Demo {
 		weak("The demo searches its popular apps only: a real system searches every package of its Nixpkgs.", "apps_demo")
@@ -386,11 +390,11 @@ apps_page :: proc(app: ^App, em: f32) {
 	case .Failed:
 		note_well("catalogue", lucide.ALERT_TRIANGLE, .Red, "The catalogue cannot be read", app.catalogue.why, em)
 	case .Ready:
-		if app.catalogue.query != query || app.catalogue.answered != app.catalogue.asked {
-			ui.button("###catalogue_searching", "Searching", o = {face = .Ghost, busy = true})
+		// (while the newest query is searched, the last answer stays: an empty list at each key made the page blink)
+		if len(app.catalogue.hits) == 0 {
+			if index_answered(&app.catalogue, query) { weak("No package says that.", "catalogue_none") }
 			return
 		}
-		if len(app.catalogue.hits) == 0 { weak("No package says that.", "catalogue_none"); return }
 		if ui.list_card("###catalogue_hits") {
 			for e, i in app.catalogue.hits {
 				popular := false
@@ -813,6 +817,8 @@ settings_page :: proc(app: ^App, em: f32) {
 			ui.spacer(ui.px(em * 0.6))
 			query := strings.to_lower(ui.line_edit_string(&app.options_search), context.temp_allocator)
 			every := query != "" && app.source == .Folder
+			// (an empty query's answer empties the hits: a new query never shows the hits of one before it)
+			if query == "" { index_search(app, &app.options_index, "") }
 			if every {
 				// (every option of the system: its index, built once)
 				index_need(app, &app.options_index, .Options)

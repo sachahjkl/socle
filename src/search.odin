@@ -191,6 +191,11 @@ index_search :: proc(app: ^App, index: ^Index, text: string) {
 	ui.task(&app.main.state, search_work, search_done, new_clone(Query{index = index, number = index.asked, text = strings.clone(text)}), search_lost)
 }
 
+// The hits are the answer of `query` itself, not of a query before it.
+index_answered :: proc(index: ^Index, query: string) -> bool {
+	return index.state == .Ready && index.query == query && index.answered == index.asked
+}
+
 @(private = "file")
 search_work :: proc(data: rawptr) {
 	q := (^Query)(data)
