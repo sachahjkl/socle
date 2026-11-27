@@ -3,6 +3,11 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.10.0] - 2026-11-27 17:47
+
+### Added
+- **Debug panels**: Ctrl+Alt+Shift+D opens socle's state beside the window: the folder's read, the draft and its evaluation, the apply and its build log, the search indexes, the installer. Their acts reach the hard cases from the demo: a read, an evaluation, a build or an install that fails, a long build log, an index read again.
+
 ## [0.9.2] - 2026-11-26 21:23
 
 ### Fixed
@@ -88,6 +93,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.10.0]: https://github.com/sachahjkl/socle/releases/tag/v0.10.0
 [0.9.2]: https://github.com/sachahjkl/socle/releases/tag/v0.9.2
 [0.9.1]: https://github.com/sachahjkl/socle/releases/tag/v0.9.1
 [0.9.0]: https://github.com/sachahjkl/socle/releases/tag/v0.9.0
