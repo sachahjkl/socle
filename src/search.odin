@@ -255,6 +255,15 @@ search_done :: proc(data: rawptr, _: u64) {
 @(private = "file")
 search_lost :: proc(data: rawptr) { free(data) }
 
+// The index as a new session has it: the next page that needs it reads it again (the debug panel's Drop). Not while a
+// worker reads it or searches it: its entries are that worker's to read. False: one does.
+index_drop :: proc(index: ^Index) -> bool {
+	if index.state == .Building || (index.answered != index.asked && index.answered != -1) { return false }
+	index_destroy(index)
+	index^ = {}
+	return true
+}
+
 index_destroy :: proc(index: ^Index) {
 	virtual.arena_destroy(&index.arena)
 	delete(index.hits)

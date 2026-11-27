@@ -316,7 +316,7 @@ apply_revert :: proc(app: ^App) {
 	helper_start(app, {"revert"})
 }
 
-@(private = "file")
+// The apply stopped: the window says why (the debug panel's "Fail the build" comes through here too).
 apply_failed :: proc(app: ^App, why: string) {
 	app.apply.stage = .Idle
 	delete(app.apply.failure)

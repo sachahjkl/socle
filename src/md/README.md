@@ -103,3 +103,5 @@ These tests come before any window, because each one can break the design:
   nix-output-monitor), the command line
 - [infrastructure/helper.md](infrastructure/helper.md): the root service, its verbs, its checks, polkit, the switch
   that outlives the window
+- [infrastructure/debug-panels.md](infrastructure/debug-panels.md): the debug panels, one per state machine; values
+  watched where a change would lie, acts that simulate through the real paths, the demo's own simulations

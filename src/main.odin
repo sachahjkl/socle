@@ -154,6 +154,7 @@ open :: proc(o: Open_Options) -> ^App {
 	app.lock_now = make(map[string]i64)
 	app.lock_committed = make(map[string]i64)
 	views_register_all(app)
+	debug_panels_register(&h.state, app)
 	if o.install {
 		installer_open(app)
 		return app
