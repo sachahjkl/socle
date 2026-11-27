@@ -323,12 +323,13 @@ in {
           "cp -r /tmp/folder /tmp/broken && mkdir -p /tmp/broken/custom",
           "echo '{ environment.etc.broken.text = throw \"broken on purpose\"; }' > /tmp/broken/custom/broken.nix",
       )
-      rc, out = installer.execute("socle helper install /tmp/broken 2>&1 | grep -v '^@nix {\"action\":\"\\(start\\|stop\\|result\\)\"' ; exit ''${PIPESTATUS[0]}")
-      assert rc != 0 and "@socle Build" in out and "broken on purpose" in out, "the broken folder did not stop at its build"
+      # (an hour at most: a whole system built in a machine on a busy host passes the driver's 900 s)
+      rc, out = installer.execute("socle helper install /tmp/broken 2>&1 | grep -v '^@nix {\"action\":\"\\(start\\|stop\\|result\\)\"' ; exit ''${PIPESTATUS[0]}", timeout=3600)
+      assert rc != 0 and "@socle Build" in out and "broken on purpose" in out, f"the broken folder did not stop at its build (exit {rc}):\n{out[-4000:]}"
       installer.fail("findmnt /mnt")
 
       # (nix's messages kept, its progress left out)
-      rc, out = installer.execute("socle helper install /tmp/folder 2>&1 | grep -v '^@nix {\"action\":\"\\(start\\|stop\\|result\\)\"' ; exit ''${PIPESTATUS[0]}")
+      rc, out = installer.execute("socle helper install /tmp/folder 2>&1 | grep -v '^@nix {\"action\":\"\\(start\\|stop\\|result\\)\"' ; exit ''${PIPESTATUS[0]}", timeout=3600)
       print(out)
       assert rc == 0, "socle helper install failed"
       for step in ["Check", "Disk", "Folder", "Hardware", "Build", "Install", "Done"]:
