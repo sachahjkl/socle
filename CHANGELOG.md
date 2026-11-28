@@ -3,6 +3,14 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.11.0] - 2026-11-28 00:23
+
+### Added
+- **Faster first frame**: the window shows its first frame drawn on the CPU while the graphics device starts, so Socle opens sooner.
+
+### Fixed
+- **Dropdown lists and debug panels**: dropdown rows are no longer cut at fractional display scales, and the debug window opens in release builds with its acts, toggles, tabs and header buttons aligned inside the window.
+
 ## [0.10.0] - 2026-11-27 17:47
 
 ### Added
@@ -93,6 +101,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.11.0]: https://github.com/sachahjkl/socle/releases/tag/v0.11.0
 [0.10.0]: https://github.com/sachahjkl/socle/releases/tag/v0.10.0
 [0.9.2]: https://github.com/sachahjkl/socle/releases/tag/v0.9.2
 [0.9.1]: https://github.com/sachahjkl/socle/releases/tag/v0.9.1
