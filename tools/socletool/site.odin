@@ -17,7 +17,7 @@ SITE_LD :: [?][2]string{
 }
 
 site_meta :: proc() -> tk_site.Meta {
-	m := tk_site.meta_default(name = "Socle", url = SITE_URL, repository = REPOSITORY, tagline = "Your whole system in one window", theme = "#0b0f18", accent = "#7ebae4", card = "img/overview.png")
+	m := tk_site.meta_default(name = "Socle", url = SITE_URL, repository = REPOSITORY, tagline = "NixOS configuration", theme = "#0b0f18", accent = "#7ebae4", card = "img/overview.png")
 	@(static) ld := SITE_LD
 	m.ld_fields = ld[:]   // (static: the site command keeps the Meta as long as the tool runs)
 	m.docs = true         // (the Docs section: the nav links it)

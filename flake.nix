@@ -1,5 +1,5 @@
 {
-  description = "socle: your whole system in one window: start from a ready-made system, change any setting, go back in one step.";
+  description = "NixOS configuration";
 
   inputs = {
     self.submodules = true;
@@ -17,7 +17,7 @@
     # the toolkit the program is built on: the same commit as the ext/gui_toolkit submodule (socletool check says so). An
     # input, not the submodule, for the package: a github: flake comes without its submodules
     gui_toolkit = {
-      url = "github:sachahjkl/gui_toolkit/v0.370.0";
+      url = "github:sachahjkl/gui_toolkit/v0.370.2";
       flake = false;
     };
     # a home on any system (src/md/data/targets.md): Home Manager on its own, NixOS or not
@@ -144,7 +144,7 @@
           name = "socle";
           desktopName = "Socle";
           genericName = "System Settings";
-          comment = "Your whole system in one window.";
+          comment = "NixOS configuration";
           exec = "socle";
           icon = "socle";
           categories = ["Settings" "System"];
@@ -167,7 +167,7 @@
       '';
       disallowedReferences = [odin];
       meta = {
-        description = "Your whole system in one window: start from a ready-made system, change any setting, go back in one step.";
+        description = "NixOS configuration";
         homepage = "https://socle.froment.software/";
         license = lib.licenses.mit;
         platforms = [system];

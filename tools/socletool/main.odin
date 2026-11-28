@@ -19,7 +19,7 @@ project :: proc() -> toolbox.Project {
 		name = "socle", repository = REPOSITORY, changelog = "CHANGELOG.md",
 		version_file = "src/version.odin", version_line = "APP_VERSION :: ", program = "build/socle",
 		features = {.Devtools},
-		title = "Socle", description = "Your whole system in one window: start from a ready-made system, change any setting, go back in one step.",
+		title = "Socle", description = "NixOS configuration",
 		publisher = "Froment Software", copyright = "Copyright (c) 2026 sachahjkl",
 	}
 }

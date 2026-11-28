@@ -11,7 +11,6 @@ import png "gt:png"
 import "gt:render"
 import "gt:ui"
 
-APP_TAGLINE      :: "Your whole system in one window: start from a ready-made system, change any setting, go back in one step."
 APP_LICENCE      :: "MIT"
 APP_COPYRIGHT    :: "© 2026 Froment Software"
 APP_WEBSITE_URL  :: "https://socle.froment.software"
@@ -61,7 +60,6 @@ about_info :: proc(app: ^App) -> ui.About_Info {
 	return {
 		name         = APP_NAME,
 		version      = APP_VERSION,
-		tagline      = APP_TAGLINE,
 		licence      = APP_LICENCE,
 		copyright    = APP_COPYRIGHT,
 		logo         = app.logo,

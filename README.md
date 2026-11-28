@@ -2,7 +2,7 @@
 
 <h1 align="center">socle</h1>
 
-<p align="center"><b>Your whole system in one window: start from a ready-made system, change any setting, go back in one step.</b></p>
+<p align="center"><b>NixOS configuration</b></p>
 
 <p align="center">
 <a href="https://socle.froment.software/"><img src="https://img.shields.io/badge/site-socle.froment.software-5277c3" alt="site"></a>

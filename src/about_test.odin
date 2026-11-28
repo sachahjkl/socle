@@ -18,6 +18,7 @@ about_info_and_whats_new_work_without_a_window :: proc(t: ^testing.T) {
 	info := about_info(app)
 	testing.expect_value(t, info.name, APP_NAME)
 	testing.expect_value(t, info.version, APP_VERSION)
+	testing.expect_value(t, info.tagline, "")
 	testing.expect_value(t, info.licence, "MIT")
 	testing.expect(t, info.on_whats_new != nil, "About has a built-in What's new action")
 	testing.expect_value(t, info.website_url, APP_WEBSITE_URL)
