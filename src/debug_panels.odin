@@ -47,12 +47,6 @@ folder_debug :: proc(app: ^App) {
 @(private = "file")
 draft_debug :: proc(app: ^App) {
 	debug.watch("changes", len(app.changes))
-	if debug.section("Changes", open = false) {
-		for c, i in app.changes {
-			if i >= LIST_MAX { break }
-			debug.watch(fmt.tprintf("%d", i), fmt.tprintf("%s: %s", c.page, c.text))
-		}
-	}
 	debug.watch("evaluating", app.evaluating)
 	debug.watch("evaluation due (ms)", app.eval_due_ms)
 	debug.watch("evaluation error", app.eval_error)
@@ -67,6 +61,13 @@ draft_debug :: proc(app: ^App) {
 		app.eval_error = ""
 	}
 	if debug.act("Discard the draft") { draft_discard(app) }
+	// (sections last: an unindented item after a section looks like a misaligned child of it)
+	if debug.section("Changes", open = false) {
+		for c, i in app.changes {
+			if i >= LIST_MAX { break }
+			debug.watch(fmt.tprintf("%d", i), fmt.tprintf("%s: %s", c.page, c.text))
+		}
+	}
 }
 
 @(private = "file")
@@ -78,6 +79,16 @@ apply_debug :: proc(app: ^App) {
 	debug.watch("summary", a.summary)
 	debug.watch("path", a.path)
 	debug.watch("failure", a.failure)
+	// (before the sections: a top-level act right below Log sat glued under Log's indented acts)
+	// (a stage that the helper holds is not the window's to end: a version on trial has its timer on the machine)
+	if a.stage == .Idle || a.stage == .Preparing {
+		if debug.act("Fail the build") {
+			if len(a.log.lines) == 0 { log_stress(&a.log) }
+			apply_failed(app, SIMULATED)
+		}
+	} else {
+		debug.note("The helper holds this stage: nothing is simulated until it ends.")
+	}
 	if debug.section("Progress") {
 		p := a.progress
 		debug.watch("built", fmt.tprintf("%d of %d", p.builds_done, p.builds_expected))
@@ -91,15 +102,6 @@ apply_debug :: proc(app: ^App) {
 		debug.watch("lines said", a.log.next)
 		if debug.act("Add lines") { log_stress(&a.log) }
 		if debug.act("Clear") { build_log_clear(&a.log) }
-	}
-	// (a stage that the helper holds is not the window's to end: a version on trial has its timer on the machine)
-	if a.stage == .Idle || a.stage == .Preparing {
-		if debug.act("Fail the build") {
-			if len(a.log.lines) == 0 { log_stress(&a.log) }
-			apply_failed(app, SIMULATED)
-		}
-	} else {
-		debug.note("The helper holds this stage: nothing is simulated until it ends.")
 	}
 }
 
