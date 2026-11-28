@@ -3,6 +3,11 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.12.1] - 2026-11-28 12:44
+
+### Fixed
+- **Apply and Draft debug panels**: top-level actions (Fail the build, Evaluate now, Discard the draft) now sit above the collapsible sections instead of directly underneath an indented section's buttons.
+
 ## [0.12.0] - 2026-11-28 11:17
 
 ### Added
@@ -106,6 +111,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.12.1]: https://github.com/sachahjkl/socle/releases/tag/v0.12.1
 [0.12.0]: https://github.com/sachahjkl/socle/releases/tag/v0.12.0
 [0.11.0]: https://github.com/sachahjkl/socle/releases/tag/v0.11.0
 [0.10.0]: https://github.com/sachahjkl/socle/releases/tag/v0.10.0
