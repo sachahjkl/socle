@@ -16,6 +16,7 @@ import "core:strconv"
 import "core:strings"
 import host "gt:host"
 import "gt:platform"
+import markdown "gt:markdown"
 import "gt:render"
 import "gt:ui"
 
@@ -26,7 +27,7 @@ WINDOW_SIZE :: [2]int{1280, 800}
 
 // The pages of the sidebar: socle's own, then the features' pages that the evaluation lists (generic: made from their
 // options' declarations).
-Page :: enum { Overview, Apps, People, Desktop, Region, Feature, Updates, History, Templates, All_Settings }
+Page :: enum { Overview, Apps, People, Desktop, Region, Feature, Updates, History, Templates, All_Settings, Whats_New }
 
 App :: struct {
 	shared:    host.Shared,
@@ -74,6 +75,12 @@ App :: struct {
 	setup_sure:  bool,
 	setup_templates: [dynamic]Gallery_Entry,   // Setup: socle's templates of the target, read when the folder is absent
 	templates:   Template_State,                // Templates: save as a template, start from a link
+
+	// About modal and built-in What's new page (about.odin)
+	about_open:   bool,
+	about_return: Page,
+	logo:          render.Texture,
+	changelog_doc: markdown.Doc,
 
 	// the installer's window, in place of the system's (installer.odin): nil unless `socle install`
 	installer:     ^Installer,
@@ -154,6 +161,7 @@ open :: proc(o: Open_Options) -> ^App {
 	app.lock_now = make(map[string]i64)
 	app.lock_committed = make(map[string]i64)
 	views_register_all(app)
+	about_init(app)
 	debug_panels_register(&h.state, app)
 	if o.install {
 		installer_open(app)
@@ -175,6 +183,7 @@ page_open :: proc(app: ^App, name: string) {
 	case "history":      app.page = .History
 	case "templates":    app.page = .Templates
 	case "settings":     app.page = .All_Settings
+	case "whats-new":    app.page = .Whats_New
 	case:
 		app.page = .Feature
 		delete(app.feature)
@@ -184,6 +193,8 @@ page_open :: proc(app: ^App, name: string) {
 
 close :: proc(app: ^App) {
 	ui.chores_stop()
+	// (destroy the logo texture before host_close shuts down the renderer)
+	about_destroy(app)
 	host.host_close(&app.main)
 	the_app = nil
 	installer_close(app)

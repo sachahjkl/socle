@@ -14,12 +14,14 @@ import "gt:ui"
 PAGE_TITLES := [Page]string{
 	.Overview = "Overview", .Apps = "Apps", .People = "People", .Desktop = "Desktop", .Region = "Region", .Feature = "",
 	.Updates = "Updates", .History = "History", .Templates = "Templates", .All_Settings = "All settings",
+	.Whats_New = "What's new",
 }
 
 PAGE_ICONS := [Page]string{
 	.Overview = lucide.LAYOUT_DASHBOARD, .Apps = lucide.PACKAGE, .People = lucide.USERS, .Desktop = lucide.MONITOR, .Region = lucide.GLOBE,
 	.Feature = lucide.SLIDERS_HORIZONTAL, .Updates = lucide.REFRESH_CW, .History = lucide.HISTORY,
 	.Templates = lucide.LAYOUT_GRID, .All_Settings = lucide.SLIDERS_HORIZONTAL,
+	.Whats_New = lucide.SCROLL_TEXT,
 }
 
 // A Lucide icon by the name a feature gives (socle.ui.pages.<id>.icon).
@@ -72,9 +74,10 @@ build :: proc(h: ^host.Host, size: host.Vec2) {
 						if ui.column(id = "###page") {
 							ui.spacer(ui.px(em * 1.4))
 							switch {
-							case app.load == .Absent:   setup_page(app, em)
+							case app.page == .Whats_New: whats_new_page(app, em, ready)
+							case app.load == .Absent:    setup_page(app, em)
 							case !ready && app.load == .Failed: failed_page(app, em)
-							case !ready:                loading_page(app, em)
+							case !ready:                 loading_page(app, em)
 							case:
 								if app.load == .Failed { failure_note(app, em) }
 								page_build(app, em)
@@ -91,6 +94,7 @@ build :: proc(h: ^host.Host, size: host.Vec2) {
 			}
 		}
 	}
+	about_modal_build(app)
 	ui.set_toast_area({{0, ui.dense(em * 2.8)}, {size.x, size.y - ui.dense(em * 3.6)}})
 }
 
@@ -107,6 +111,7 @@ page_build :: proc(app: ^App, em: f32) {
 	case .History:      history_page(app, em)
 	case .Templates:    templates_page(app, em)
 	case .All_Settings: settings_page(app, em)
+	case .Whats_New:    whats_new_page(app, em, true)
 	}
 }
 
@@ -134,7 +139,9 @@ top_bar :: proc(app: ^App, em: f32) {
 				if app.source == .Demo { place = fmt.tprintf("%s  ·  demo", place) }
 				ui.label(fmt.tprintf("%s###where", place))
 			}
-			ui.spacer(ui.px(em * 0.8))
+			ui.spacer(ui.px(em * 0.6))
+			if ui.button("about", "", lucide.INFO, {face = .Ghost, tip = "About socle"}).clicked { app.about_open = true }
+			ui.spacer(ui.px(em * 0.4))
 			ui.window_buttons()
 		}
 	}

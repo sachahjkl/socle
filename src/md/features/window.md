@@ -12,6 +12,16 @@ A sidebar, as in classeur and inspecteur, with three groups:
 
 The palette (Ctrl+K, the toolkit's) finds a page, an app, any option, any action.
 
+## About and What's new
+
+- The info button in the title bar opens `ui.about_modal`: socle's logo (`assets/logo_128.png`), version, toolkit
+  version, MIT licence, links (Website, Online release notes, Repository, Docs), Copy version, Copy diagnostics
+  (target, host, NixOS release, renderer), and **What's new** as the primary action.
+- **What's new** (`Page.Whats_New`) embeds `CHANGELOG.md` and renders its releases through `gt:markdown`
+  (`markdown.view`: cached across frames, selectable text, clickable links). It opens from About (and
+  `--page=whats-new`) and is not listed in Manage, which holds the system's own controls. When no configuration is
+  loaded yet, a Back link returns to the page before it.
+
 ## The bar of changes
 
 A bar at the bottom of every page, shown only when the draft differs from the applied version: "3 changes", "Review",

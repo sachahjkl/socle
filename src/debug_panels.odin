@@ -35,6 +35,7 @@ folder_debug :: proc(app: ^App) {
 	debug.watch("load error", app.load_error)
 	debug.watch("versions", len(app.generations))
 	debug.choice("page", &app.page)
+	debug.toggle("about", &app.about_open)
 	if debug.act("Read again") && !app.loading { load_start(app) }
 	if debug.act("Fail the read") {
 		app.load = .Failed
