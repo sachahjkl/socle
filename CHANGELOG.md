@@ -3,6 +3,11 @@
 All notable changes to socle are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [semantic versioning](https://semver.org/).
 
+## [0.12.2] - 2026-11-28 16:06
+
+### Changed
+- **Simpler About dialog and metadata**: the About dialog omits the redundant subtitle line, desktop and site metadata use the concise description, and debug panel tabs are tighter (gui_toolkit v0.370.2).
+
 ## [0.12.1] - 2026-11-28 12:44
 
 ### Fixed
@@ -111,6 +116,7 @@ and the versions follow [semantic versioning](https://semver.org/).
 - **The site and the film**: socle.froment.software presents socle with a film of its window, driven as a person uses it.
 - **The design of socle**: what it does and how, in the intent (src/md), with ten mockups of its screens and its mark.
 
+[0.12.2]: https://github.com/sachahjkl/socle/releases/tag/v0.12.2
 [0.12.1]: https://github.com/sachahjkl/socle/releases/tag/v0.12.1
 [0.12.0]: https://github.com/sachahjkl/socle/releases/tag/v0.12.0
 [0.11.0]: https://github.com/sachahjkl/socle/releases/tag/v0.11.0
